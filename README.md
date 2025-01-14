@@ -1,11 +1,11 @@
-# Hayes et al. 2022
+# Abril Gaona TEST
 
-All Analyses are in gh-pages branch
+This is a test for the website to the HIV paper
 
-Results and Scripts for Hayes et al. 2022 Nature can be found here:
+Results and Scripts for HIV et al. 2025 "Insert Journal here" can be found here:
 https://lindsaynhayes.github.io/Hayes_2022/
 
-## **Data Analyses**
+## ** Here goes the data **
 
 RNA sequencing analysis of microglia in Fig 1 & Ext Data Fig 1-3:
 - MACS-MG Adult LPS Response: [link]( https://lindsaynhayes.github.io/Hayes_2022/Bulk_RNAseq_MACS/DESeq2_MACS_Adult_Bulk_publication.html ) | [script](https://github.com/lindsaynhayes/Hayes_2022/blob/gh-pages/Bulk_RNAseq_MACS/DESeq2_MACS_Adult_Bulk_publication.Rmd)
