@@ -1,14 +1,26 @@
 name: " HIV2025_website"
-title: "HIV_website"
-description: |
+title: "HIV 2025 Journal X"
+description: 
   HIV_website
 output_dir: "docs"
 theme: my-theme.css
 navbar:
   right:
-    - text: "Home"
-      href: home.html
-    - text: "About"
+    - text: "Figures"
+      menu:
+        - text: "Figure 1"
+          href: Figure_1.html
+        - text: "Figure 2"
+          href: Figure_2.html
+        - text: "Figure 3"
+          href: Figure_3.html
+        - text: "Figure 4"
+          href: Figure_4.html
+        - text: "Figure 5"
+          href: Figure_5.html
+        - text: "Figure 6"
+          href: Figure_6.html
+    - text: "Supplementary data"
       href: about.html
     - text: "Data"
       href: 

@@ -1,18 +1,47 @@
 ---
-title: "HIV_website"
+title: "Author List goes here"
 description: |
-  The website for HIV_2025 "journal x"
+  
+image: "images/umap.png"
+links:
+  - label: Publication
+    url: "https://hayes-lab.github.io/"
+  - label: Hayes Lab
+    url: "https://hayes-lab.github.io/"
+  - label: Lindsay Hayes 
+    url: "https://github.com/lindsaynhayes/"
+  - label: Email
+    url: "mailto:lindsaynhayes@gmail.com"
+output:
+  postcards::trestles
 site: distill::distill_website
+
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+<style>
+  .image-with-subtext {
+    text-align: center;
+  }
 
-# Learn more about creating websites with Distill at:
-# https://rstudio.github.io/distill/website.html
+  .image-with-subtext img {
+    width: 300px;
+    border-radius: 10px; /* Optional: Rounded corners */
+  }
 
-# Learn more about publishing to GitHub Pages at:
-# https://rstudio.github.io/distill/publish_website.html#github-pages
+  .image-with-subtext p {
+    font-size: 14px;
+    color: gray;
+    margin-top: 5px;
+  }
+</style>
 
-```
+<div class="image-with-subtext">
+  <img src="images/umap.png" alt="Example Image">
+  <p> This will be a graphical abstract.</p>
+</div>
+
+## "Unique gene signatures in cerebrospinal fluid derived immune cells inform disease risk in virally suppressed people with human immunodeficiency virus (VS-PWH)"
+
+Welcome! You will find all the relevant information related to the figures and data of our paper here!
+
 

@@ -1,0 +1,13 @@
+---
+title: "Title of figure 2"
+image: "images/Figure-02.jpg"
+
+output:
+  postcards::trestles
+---
+
+### Scripts 
+
+To check a detailed script, see below:
+
+<iframe src="pages/Analysis.html" style="width: 100%; height: 100vh; border: none;"></iframe>
