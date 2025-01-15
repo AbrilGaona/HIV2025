@@ -1,0 +1,15 @@
+name: " HIV2025_website"
+title: "HIV_website"
+description: |
+  HIV_website
+output_dir: "docs"
+theme: my-theme.css
+navbar:
+  right:
+    - text: "Home"
+      href: home.html
+    - text: "About"
+      href: about.html
+    - text: "Data"
+      href: 
+output: distill::distill_article
