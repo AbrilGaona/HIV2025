@@ -1,0 +1,140 @@
+---
+title: "HIV Flow Cytometry"
+author: "Lindsay N Hayes"
+date: '2025-01-21'
+format: html
+editor_options: 
+  chunk_output_type: console
+---
+
+### About the Data
+Analysis of FACS data from cells derived from 5-6 mL of cerebrospinal fluid (CSF) or 1-2 million peripheral blood cells from the same individuals. All subjects were virally-suppressed people with HIV. CSF-derived cells were processed fresh. PBMCs were analyzed from frozen aliquots.
+
+## Load the Data
+```{r, message=FALSE}
+library(ggplot2)
+library(cowplot)
+library(tidyverse)
+
+data <- read.csv("20220817_02_STATS.csv", stringsAsFactors = TRUE)
+CSF <- data %>% filter(Type == "CSF")
+PBMC <- data %>% filter(Type == "PBMC")
+data[,3:4]
+```
+
+## Plots
+```{r plots1, echo = FALSE, fig.height=3, fig.width=4}
+data %>% select(1:6) %>% pivot_longer(cols = starts_with("perc"),names_to = "perc.clean", values_to = "percent") %>% 
+  ggplot(., aes(x = perc.clean, y = percent, fill = Type)) + 
+  geom_boxplot(outlier.shape = NA) +
+  geom_point(position = position_dodge(width = 0.75)) + theme_cowplot()  + scale_fill_manual(values = c("cornflowerblue", "firebrick2")) +
+  ylab("% of total") + xlab("") + ylim(0,100) + scale_x_discrete(labels= c("lymphoid", "myeloid"))
+```
+
+```{r, plots2, warning=FALSE, echo = FALSE, fig.height=3, fig.width=4}
+
+data %>% select(c(1:6)) %>% group_by(Type) %>% 
+  summarise(cells = "myeloid",
+            mean = mean(perc.myel),
+            sem = sd(perc.myel) / sqrt(n()),
+            lower = (mean - sem),
+            upper = (mean + sem)) -> m
+
+data %>% select(c(1:6)) %>% group_by(Type) %>% 
+  summarise(cells = "lymphoid",
+            mean = mean(perc.lym),
+            sem = sd(perc.lym) / sqrt(n()),
+            lower = (mean(perc.lym) + mean(perc.myel) - sem),
+            upper = (mean(perc.lym) + mean(perc.myel) + sem)) -> l
+
+errs = rbind(m,l)
+
+#Draw bar plot with ggplot2
+ggplot(data=errs, aes(x=Type, y=mean, fill=cells)) + 
+  geom_bar(stat="identity", position="stack", width = 0.4) +
+  geom_errorbar(data = filter(errs, cells == 'myeloid'), aes(ymax=upper,  ymin=lower), stat = 'identity', position = 'identity', width=0.15) + 
+   geom_errorbar(data = filter(errs, cells == 'lymphoid'), aes(ymax=upper,  ymin=lower), stat = 'identity', position = 'identity', width=0.15) + 
+  scale_fill_manual(values = c("hotpink", "seagreen3")) +
+  xlab(" ") + 
+  ylab("Percentage (%)") + theme_cowplot() +
+  scale_y_continuous(labels = function(bs) {paste0(bs, '%')}) +  geom_text(aes(y = errs$mean, label = round(mean,1)), vjust = 3, colour = "white", size = 4)
+```
+
+```{r plots3, echo = FALSE, fig.height=3, fig.width=2}
+ggplot(data, aes(x = Type, y = perc.myel.P2RY12, fill = Type)) + geom_boxplot() + geom_point(size = 2) + theme_cowplot() + scale_fill_manual(values = c("cornflowerblue", "firebrick2")) + ylab("% of myeloid cells \n P2RY12+") + ylim(0,100) + geom_point(aes(color = Sample)) + scale_colour_grey() + theme(legend.position="none")
+
+ggplot(data, aes(x = Type, y = perc.myel.CD14, fill = Type)) + geom_boxplot() + geom_point(size = 2) + theme_cowplot() + scale_fill_manual(values = c("cornflowerblue", "firebrick2")) + ylab("% of myeloid cells \n CD14+") + ylim(0,100) + geom_point(aes(color = Sample)) + scale_colour_grey() + theme(legend.position="none")
+
+ggplot(data, aes(x = Type, y = perc.myel.CD14.CD16., fill = Type)) + geom_boxplot() + geom_point(size = 2) + theme_cowplot() + scale_fill_manual(values = c("cornflowerblue", "firebrick2")) + ylab("% of myeloid cells \n CD14+ & CD16+") + ylim(0,100) + geom_point(aes(color = Sample)) + scale_colour_grey() + theme(legend.position="none")
+```
+
+## Statistics
+#### paired T-test between PBMC vs CSF
+% Lymphoid & Myeloid
+```{r stats}
+a <- data %>% filter(Type == "CSF") %>% mutate(pval = shapiro.test(perc.lym)$p.value)
+b <- data %>% filter(Type == "PBMC") %>% mutate(pval = shapiro.test(perc.lym)$p.value)
+c <- data %>% filter(Type == "CSF") %>% mutate(pval = shapiro.test(perc.myel)$p.value)
+d <- data %>% filter(Type == "PBMC") %>% mutate(pval = shapiro.test(perc.myel)$p.value)
+tmp=rbind(a$pval[1], b$pval[1], c$pval[1], d$pval[1])
+rownames(tmp)=c("CSF:Lym","PBMC:Lym","CSF:Myel","PBMC:Myel")
+colnames(tmp)=c("Shapiro Test for Normality")
+round(tmp,2)
+rm(a,b,c,d,tmp)
+
+var.test(CSF$perc.lym, PBMC$perc.lym)
+t.test(CSF$perc.lym, PBMC$perc.lym, paired = TRUE, var.equal = TRUE)
+
+var.test(CSF$perc.myel, PBMC$perc.myel)
+t.test(CSF$perc.myel, PBMC$perc.myel, paired = TRUE, var.equal = TRUE)
+```
+
+#### paired T-test between PBMC vs CSF
+% P2RY12
+```{r}
+a <- data %>% filter(Type == "CSF") %>% mutate(pval = shapiro.test(perc.myel.P2RY12)$p.value)
+b <- data %>% filter(Type == "PBMC") %>% mutate(pval = shapiro.test(perc.myel.P2RY12)$p.value)
+tmp=rbind(a$pval[1], b$pval[1])
+rownames(tmp)=c("CSF","PBMC")
+colnames(tmp)=c("Shapiro Test for Normality")
+round(tmp,2)
+rm(a,b,tmp)
+
+var.test(CSF$perc.myel.P2RY12, PBMC$perc.myel.P2RY12)
+t.test(CSF$perc.myel.P2RY12, PBMC$perc.myel.P2RY12, paired = TRUE, var.equal = TRUE)
+```
+
+#### paired T-test between PBMC vs CSF
+% CD14
+```{r}
+a <- data %>% filter(Type == "CSF") %>% mutate(pval = shapiro.test(perc.myel.CD14)$p.value)
+b <- data %>% filter(Type == "PBMC") %>% mutate(pval = shapiro.test(perc.myel.CD14)$p.value)
+tmp=rbind(a$pval[1], b$pval[1])
+rownames(tmp)=c("CSF","PBMC")
+colnames(tmp)=c("Shapiro Test for Normality")
+round(tmp,2)
+rm(a,b,tmp)
+
+var.test(CSF$perc.myel.CD14, PBMC$perc.myel.CD14)
+t.test(CSF$perc.myel.CD14, PBMC$perc.myel.CD14, paired = TRUE, var.equal = FALSE)
+```
+
+#### paired T-test between PBMC vs CSF
+% CD14 & CD16
+```{r}
+a <- data %>% filter(Type == "CSF") %>% mutate(pval = shapiro.test(perc.myel.CD14.CD16.)$p.value)
+b <- data %>% filter(Type == "PBMC") %>% mutate(pval = shapiro.test(perc.myel.CD14.CD16.)$p.value)
+tmp=rbind(a$pval[1], b$pval[1])
+rownames(tmp)=c("CSF","PBMC")
+colnames(tmp)=c("Shapiro Test for Normality")
+round(tmp,2)
+rm(a,b,tmp)
+
+var.test(CSF$perc.myel.CD14.CD16., PBMC$perc.myel.CD14.CD16.)
+t.test(CSF$perc.myel.CD14.CD16., PBMC$perc.myel.CD14.CD16., paired = TRUE, var.equal = FALSE)
+```
+
+#### Session Info
+```{r}
+sessionInfo()
+```
