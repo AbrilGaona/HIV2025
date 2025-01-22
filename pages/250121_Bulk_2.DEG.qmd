@@ -1,0 +1,148 @@
+---
+title: "CSF Bulk 2. Differential Expression CSF vs PBMC"
+author: "Lindsay Hayes"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+### About the Data
+DESeq2 analysis of CSF and PBMC myeloid and lymphoid cells with *design = ~ 0 + group* the groups include: PBMC_Myel, PBMC_Lym, CSF_Myel, CSF_Lym. Differential expression between CSF and PBMC in either myeloid cells or lymphoid cells. n = 6 CSF samples and 6 PBMC samples each bulk sorted for myeloid and lymphoid cells. 
+
+```{r, packages, message=FALSE}
+library(DESeq2)
+library(ggplot2)
+library(cowplot)
+library(pheatmap)
+library(ggrepel)
+library(grid)
+library(rstatix)
+```
+
+## Load Data
+```{r}
+load("data/filt_dds_env.rda")
+resultsNames(dds)
+```
+
+
+## PCA 
+```{r, pca, fig.height=4, fig.width=6}
+vsd <- vst(dds, blind=FALSE)
+rownames(vsd) <- rowData(dds)$gene_name
+m<-plotPCA(vsd, intgroup=c("tissue", "cell"), returnData = TRUE)
+ggplot(m, aes(PC1, PC2, color = group)) + geom_point(size = 3) + scale_color_manual(values = c("purple", "royalblue", "magenta", "tomato")) + theme_cowplot() + xlab("PC1: 72% variance") + ylab("PC2: 14% variance")
+```
+
+
+# Euclidean Distance for sample to sample variance
+```{r, dist, fig.height=4, fig.width=6}
+sampleDists <- dist(t(assay(vsd)))
+library("RColorBrewer")
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(vsd$tissue, vsd$cell, sep="-")
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+```
+
+
+## DEG Results
+```{r}
+# difference between CSF vs PBMC in lymphoid cells
+summary(results(dds, contrast=c("group", "CSF_Lym", "PBMC_Lym"), alpha=0.05))
+
+
+# difference between CSF vs PBMC in myeloid cells
+summary(results(dds, contrast=c("group", "CSF_Myel", "PBMC_Myel"), alpha=0.05))
+
+
+# difference between Mye vs Lym in PBMC cells
+summary(results(dds, contrast=c("group", "PBMC_Lym", "PBMC_Myel"), alpha=0.05))
+
+
+# difference between Mye vs Lym in CSF cells
+summary(results(dds, contrast=c("group", "CSF_Lym", "CSF_Myel"), alpha=0.05))
+
+CSFvPBMCinLym <- results(dds, contrast=c("group", "CSF_Lym", "PBMC_Lym"), alpha=0.05)
+CSFvPBMCinLym$gene <- rowData(dds)$gene_name
+
+CSFvPBMCinMye <- results(dds, contrast=c("group", "CSF_Myel", "PBMC_Myel"), alpha=0.05)
+CSFvPBMCinMye$gene <- rowData(dds)$gene_name
+
+MYEvLYMinPBMC <- results(dds, contrast=c("group", "PBMC_Myel", "PBMC_Lym"), alpha=0.05)
+MYEvLYMinPBMC$gene <- rowData(dds)$gene_name
+
+MYEvLYMinCSF <- results(dds, contrast=c("group", "CSF_Myel", "CSF_Lym"), alpha=0.05)
+MYEvLYMinCSF$gene <- rowData(dds)$gene_name
+
+write.csv(CSFvPBMCinLym, "writes/CSFvPBMCinLym.csv")
+write.csv(CSFvPBMCinMye, "writes/CSFvPBMCinMye.csv")
+```
+
+```{r}
+plotMA(CSFvPBMCinLym, ylim=c(-10,10), main = "CSF v PBMC in LYM")
+plotMA(CSFvPBMCinMye, ylim=c(-10,10), main = "CSF v PBMC in MYE")
+```
+
+### Volcano plots of DEGs 
+```{r, echo=FALSE, message=FALSE, warning = FALSE, fig.height=7, fig.width=5}
+library(EnhancedVolcano)
+
+EnhancedVolcano(CSFvPBMCinMye,
+    lab = CSFvPBMCinMye$gene,
+    x = 'log2FoldChange',
+    y = 'pvalue',
+    title = 'CSFvPBMCinMye',
+    pCutoff = 10e-5,
+    FCcutoff = 2,
+    pointSize = 2.5,
+    labSize = 4.0,
+    col=c('grey', 'grey', 'grey', 'cornflowerblue'),
+    colAlpha = 1)
+  
+EnhancedVolcano(CSFvPBMCinLym,
+    lab = CSFvPBMCinLym$gene,
+    x = 'log2FoldChange',
+    y = 'pvalue',
+    title = 'CSFvPBMCinLym',
+    pCutoff = 10e-5,
+    FCcutoff = 2,
+    pointSize = 2.5,
+    labSize = 4.0,
+    col=c('grey', 'grey', 'grey', 'cornflowerblue'),
+    colAlpha = 1)
+```
+
+### GOIs
+```{r, fig.height=4, fig.width=4}
+# plot genes of interest
+GOIs <- c("ID1", "A2M", "GNLY", "PROKR2")
+
+for (p in GOIs){
+  geneid <- rownames(dds)[which(mcols(dds)$gene_name == p)]
+  d <- plotCounts(dds, gene=geneid, intgroup=c("tissue", "cell"), returnData = TRUE)
+
+  plot <- ggplot(d, aes(x=cell, y=count, color=tissue)) + 
+    geom_point(size=3, position=position_jitterdodge(dodge.width = 0.5, jitter.width = 0)) + 
+    stat_summary(fun.y = "mean", geom = "point", aes(group = tissue), 
+                 position = position_dodge(width = 0.5), color = "black", shape = "_", size = 10) + 
+    scale_color_manual(values = c("cornflowerblue","red")) + 
+    expand_limits(y=0) + ylab("normalized count") + xlab("") + labs(subtitle = p) + 
+    theme_cowplot() + theme(legend.position = "none")
+  print(plot)
+  # CSF = blue, PBMC = red
+  # save plot
+  #350x350
+  ggsave(filename=paste(p,".jpeg", sep = ""), plot = plot, width = 60, height = 80, units = "mm", path = "plots/", bg="white")
+}
+```
+
+```{r}
+sessionInfo()
+```
+
