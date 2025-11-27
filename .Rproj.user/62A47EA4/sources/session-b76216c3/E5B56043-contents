@@ -1,0 +1,79 @@
+---
+title: "1. Create DDS Object"
+author: "Lindsay Hayes"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+### About the Data
+Analysis of FACS data from cells derived from 5-6 mL of cerebrospinal fluid (CSF) or 1-2 million peripheral blood cells from the same individuals. All subjects were virally-suppressed people with HIV. CSF-derived cells were processed fresh. PBMCs were analyzed from frozen aliquots. Cells were FACS gated for Live CD45+ cells then sorted for lymphoid (CD3+, CD20+, or CD56+) and (CD3-, CD20-, and CD56-).
+
+```{r, packages, message=FALSE}
+library(DESeq2)
+library(ggplot2)
+library(cowplot)
+library(pheatmap)
+library(ggrepel)
+library(grid)
+library(rstatix)
+```
+
+## Create Count Matrix and Deseq object from Feature Counts Output
+[reference](https://www.biostars.org/p/277316/#9541262)
+```{r, count}
+DESeqDataSetFromFeatureCounts <- function (sampleTable, directory = ".", design, ignoreRank = FALSE, ...) 
+{
+    if (missing(design)) 
+        stop("design is missing")
+    l <- lapply(as.character(sampleTable[, 2]), function(fn) read.table(file.path(directory, fn), skip=2))
+    if (!all(sapply(l, function(a) all(a$V1 == l[[1]]$V1)))) 
+        stop("Gene IDs (first column) differ between files.")
+    tbl <- sapply(l, function(a) a$V7)
+    colnames(tbl) <- sampleTable[, 1]
+    rownames(tbl) <- l[[1]]$V1
+    rownames(sampleTable) <- sampleTable[, 1]
+    dds <- DESeqDataSetFromMatrix(countData = tbl, colData = sampleTable[, 
+        -(1:2), drop = FALSE], design = design, ignoreRank, ...)
+    return(dds)
+}
+
+samples <- read.csv("data/samples.csv", stringsAsFactors = TRUE)
+genes <- read.csv("data/genes.csv")
+
+dds <- DESeqDataSetFromFeatureCounts(sampleTable = samples, 
+                                     directory = "FC/",
+                                     design = ~ 0 + group)
+
+# check
+dds
+colData(dds)
+all.equal(rownames(dds), genes$gene_id)
+rowData(dds) <- genes
+
+save(dds, file = "data/full_dds.rda")
+```
+
+## Create DDS Results Object
+```{r, dds, message=FALSE}
+
+keep <- rowSums(counts(dds) >= 10) >= 6
+dds <- dds[keep,]
+
+dds$group <- factor(dds$group, levels = c("PBMC_Myel", "PBMC_Lym", "CSF_Myel", "CSF_Lym"))
+
+dds <- DESeq(dds)
+res <- results(dds)
+resultsNames(dds)
+
+save(dds, genes, samples, res, file = "data/filt_dds_env.rda")
+normalized_counts <- counts(dds, normalized=TRUE)
+write.csv(normalized_counts, file = "data/normalized_counts.csv")
+```
+
+```{r}
+sessionInfo()
+```
+
+ 

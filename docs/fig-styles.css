@@ -1,0 +1,107 @@
+header.distill-header {
+  display: none !important;
+}
+
+/* Home bar for figure pages */
+#fig-home-bar {
+  width: 100%;
+  background: #FFFFFF;
+  padding: 6px 16px;
+  font-size: 20px;
+  margin: 0 0 10px 0;
+}
+
+#fig-home-bar a {
+  color: #5a2ca0;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+#fig-home-bar a:hover {
+  text-decoration: underline;
+}
+
+/* Make this page use the full width Distill gives us */
+.distill-article {
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.distill-article .contents {
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 10px !important;  /* tiny left/right margin so it doesn't hug the edge */
+}
+
+/* OUTER WRAPPER */
+#fig-page {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* MAIN LAYOUT: FIGURE LEFT, TEXT RIGHT */
+#fig-main {
+  display: grid;
+  grid-template-columns: 2fr 1fr;   /* image : text */
+  column-gap: 10px;
+  align-items: start;
+  width: 150%;
+  margin-top: 10px;
+}
+
+/* TITLE */
+#fig-header h1 {
+  text-align: center;
+  margin: 0px 0;
+  font-size: 40px;
+  line-height: 40px;
+}
+
+/* IMAGE PANEL */
+#fig-image-panel img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* TEXT PANEL */
+#fig-caption-panel {
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+#fig-caption-panel h3 {
+  text-align: center;
+  margin: 0 0 10px 0;
+}
+
+#fig-caption-panel ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+#fig-caption-panel li {
+  margin-bottom: 8px;
+}
+
+#fig-caption-panel a {
+  color: purple !important;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+#fig-caption-panel a:hover {
+  color: #7a00ff !important;  /* brighter purple when hovered */
+  text-decoration: underline;
+}
+
+/* STACK ON SMALL SCREENS */
+@media (max-width: 900px) {
+  #fig-main {
+    grid-template-columns: 1fr;
+    row-gap: 20px;
+  }
+}

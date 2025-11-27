@@ -1,0 +1,24 @@
+
+
+
+Tcell <- readRDS("~/Desktop/HIV/Granulator/data/Tcell.rds")
+
+DimPlot(Tcell, reduction = "umap", group.by = "seurat_clusters", label = TRUE, cols = c("darkgreen", "gold","goldenrod","palegreen","purple", "pink"))
+
+
+Idents(Tcell)
+meta <- Tcell@meta.data
+
+T_subset <- subset(Tcell, subset = seurat_clusters != "5")
+
+#Bulk genes predominnantly expressed in Lymphoid cells 
+
+feat <- c("MSMO1", "CCR5", "LDLR")
+
+feat <- c("LDLR")
+VlnPlot(object   = T_subset,features = feat, cols = c("darkgreen", "gold","goldenrod","palegreen","purple", "pink"))
+
+
+
+T_subset <- JoinLayers(T_subset)
+tcell.markers <- FindAllMarkers(T_subset, only.pos = TRUE)

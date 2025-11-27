@@ -1,0 +1,39 @@
+---
+title: "Unique gene signatures in cerebrospinal fluid-derived cells from virally suppressed people with HIV"
+description: |
+  
+links:
+  - label: Publication
+    url: "https://hayes-lab.github.io/"
+  - label: Hayes Lab
+    url: "https://hayes-lab.github.io/"
+  - label: Abril Gaona-Gamboa 
+    url: "https://github.com/AbrilGaona"
+  - label: Email
+    url: "mailto:lindsaynhayes@gmail.com"
+output:
+  postcards::trestles
+site: distill::distill_website
+
+---
+
+## Abstract
+
+Persistent immune response in the central nervous system (CNS) of people living with HIV (PWH), was linked
+to poor health outcomes and clinical complications. Disease-associated inflammation is often monitored in
+peripheral blood but may poorly estimate the CNS milieu. Soluble markers in cerebrospinal fluid (CSF) may
+mark CNS-associated pathology, but are limited to detectable, soluble markers. We demonstrate, in PWH, the
+utility of immune cell profiling within the CSF, through contrasting three methods. Flow cytometry revealed
+differences in distinct proportions of select immune cell types between CSF and peripheral blood, with
+microglia-like cells (P2RY12+) residing only in CSF, and CSF-derived myeloid cells containing a higher
+proportion of intermediate monocytes. Bulk RNA sequencing showed CSF-derived lymphoid and myeloid cells
+have gene expression patterns which are distinct from the peripheral blood with many genes showing
+enrichment for the CSF-derived leukocytes compared to blood. Single-cell RNA sequencing resolved distinct
+cell-types in the CSF and allowed for cellular decomposition of the CSF-enriched genes identified by bulk RNA
+sequencing. CSF-enriched genes expressed in bulk myeloid cell were preferentially expressed in the microglia-
+like subset. While CSF-enriched genes expressed in bulk lymphoid cells were broadly expressed across T-cell
+subtypes with only select markers showing cellular specificity. Altogether, CSF-derived immune cells from PWH
+demonstrate a promising, unique CNS gene signature that warrants further study in relation to CNS
+comorbidities in this clinical population.
+
+

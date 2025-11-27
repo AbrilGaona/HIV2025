@@ -1,0 +1,93 @@
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(SingleCellExperiment)
+library(Seurat)
+library(biomaRt)
+library(cowplot)
+library(granulator)
+library(tximport)
+library(zellkonverter)
+
+
+
+##single cell
+matrix <- readRDS("~/Desktop/HIV/Granulator/fullwu_atlas_pseudomatrix_subset.rds")
+
+
+#bulk
+load("~/Desktop/HIV/July25/filt_dds_env.rda")
+dds
+
+
+fc <- read.table("~/Desktop/HIV/Granulator/TPM/2033-CSF-Lym.tsv", header = TRUE, comment.char = "#", stringsAsFactors = FALSE)
+fc <- fc[, c("Geneid",  "Length")]
+
+fc_master <- merge(fc, genes, by.x = "Geneid", by.y = "gene_id", all.x = TRUE)
+
+#make the TPMS of bulk data
+rownames(dds) <- rowData(dds)$gene_name
+bulk <- counts(dds)
+
+bulk.vector <- setNames(fc_master$Length, fc_master$gene_name)
+
+bulk.vector <- bulk.vector[rownames(bulk)]
+
+
+head(names(bulk.vector))
+head(rownames(bulk))
+
+bulk.tpm <- get_TPM( counts = bulk, effLen = bulk.vector)
+
+sce.vector <-setNames(fc_master$Length, fc_master$gene_name)
+sce.vector <- sce.vector[rownames(matrix)]
+
+head(names(sce.vector))
+head(rownames(matrix))
+
+sce.tpm <- get_TPM(counts = matrix, effLen = sce.vector)
+
+
+decon <- deconvolute(m = bulk.tpm, sigMatrix = sce.tpm)
+
+saveRDS(decon, file = "~/Desktop/HIV/Granulator/deconvolution_granulator.rds")
+
+decon$proportions
+
+
+plot_proportions(deconvoluted = decon, method = 'svr', signature = 'sig1')
+
+plot_proportions(deconvoluted = decon, method = 'dtangle', signature = 'sig1')
+
+
+plot_proportions(deconvoluted = decon, method = 'nnls', signature = 'sig1')
+
+
+plot_proportions(deconvoluted = decon, method = 'ols', signature = 'sig1')
+plot_proportions(deconvoluted = decon, method = 'qprog', signature = 'sig1')
+plot_proportions(deconvoluted = decon, method = 'qprogwc', signature = 'sig1')
+plot_proportions(deconvoluted = decon, method = 'rls', signature = 'sig1')
+
+
+plot_deconvolute(deconvoluted = decon, scale = TRUE, labels = TRUE)
+
+
+methods <- c('svr','dtangle','nnls','ols','qprog', 'qprogwc','rls')
+correl <- correlate(deconvoluted = decon)
+
+
+
+plot_correlate(correlated = correl, method="heatmap", legend=TRUE)
+
+plot_correlate(correlated = correl, method="boxplot", legend=TRUE)
+
+
+head(correl$summary)
+
+
+head(correl$rank)
+
+
+?plot_correlate
+?plot_deconvolute

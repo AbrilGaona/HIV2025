@@ -1,0 +1,107 @@
+---
+title: "CSF Bulk 2. Differential Expression CSF vs PBMC"
+author: "Lindsay N Hayes"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+
+### About the Data
+
+DESeq2 analysis of CSF and PBMC myeloid and lymphoid cells with *design = \~ 0 + group* the groups include: PBMC_Myel, PBMC_Lym, CSF_Myel, CSF_Lym.
+Differential expression between CSF and PBMC in either myeloid cells or lymphoid cells.
+n = 6 CSF samples and 6 PBMC samples each bulk sorted for myeloid and lymphoid cells.
+
+```{r, packages, message=FALSE}
+library(DESeq2)
+library(ggplot2)
+library(cowplot)
+library(pheatmap)
+library(ggrepel)
+library(grid)
+library(rstatix)
+```
+## Load Data
+```{r}
+load("data/filt_dds_env.rda")
+resultsNames(dds)
+```
+## DEG Results
+```{r}
+# difference between CSF vs PBMC in lymphoid cells
+summary(results(dds, contrast=c("group", "CSF_Lym", "PBMC_Lym"), alpha=0.05))
+
+
+# difference between CSF vs PBMC in myeloid cells
+summary(results(dds, contrast=c("group", "CSF_Myel", "PBMC_Myel"), alpha=0.05))
+
+
+# difference between Mye vs Lym in PBMC cells
+summary(results(dds, contrast=c("group", "PBMC_Lym", "PBMC_Myel"), alpha=0.05))
+
+
+# difference between Mye vs Lym in CSF cells
+summary(results(dds, contrast=c("group", "CSF_Lym", "CSF_Myel"), alpha=0.05))
+
+CSFvPBMCinLym <- results(dds, contrast=c("group", "CSF_Lym", "PBMC_Lym"), alpha=0.05)
+CSFvPBMCinLym$gene <- rowData(dds)$gene_name
+
+CSFvPBMCinMye <- results(dds, contrast=c("group", "CSF_Myel", "PBMC_Myel"), alpha=0.05)
+CSFvPBMCinMye$gene <- rowData(dds)$gene_name
+
+MYEvLYMinPBMC <- results(dds, contrast=c("group", "PBMC_Myel", "PBMC_Lym"), alpha=0.05)
+MYEvLYMinPBMC$gene <- rowData(dds)$gene_name
+
+MYEvLYMinCSF <- results(dds, contrast=c("group", "CSF_Myel", "CSF_Lym"), alpha=0.05)
+MYEvLYMinCSF$gene <- rowData(dds)$gene_name
+
+write.csv(CSFvPBMCinLym, "writes/CSFvPBMCinLym.csv")
+write.csv(CSFvPBMCinMye, "writes/CSFvPBMCinMye.csv")
+```
+
+```{r}
+plotMA(CSFvPBMCinLym, ylim=c(-10,10), main = "CSF v PBMC in LYM")
+plotMA(CSFvPBMCinMye, ylim=c(-10,10), main = "CSF v PBMC in MYE")
+```
+
+### Volcano plots of DEGs 
+```{r, fig.height=7, fig.width=5}
+library(EnhancedVolcano)
+
+EnhancedVolcano(CSFvPBMCinMye,
+    lab = CSFvPBMCinMye$gene,
+    x = 'log2FoldChange',
+    y = 'padj',
+    title = 'CSFvPBMCinMye',
+    pCutoff = 10e-3,
+    FCcutoff = 2,
+    pointSize = 2.5, ylim=c(0,115),
+    labSize = 4.0,
+    col=c('grey', 'grey', 'grey', 'grey30'),
+    colAlpha = 1)
+ggsave(filename = "plots/1.PUB/CSVvPBMCinMye.svg", width = 4.5, height = 6)
+
+EnhancedVolcano(CSFvPBMCinLym,
+    lab = CSFvPBMCinLym$gene,
+    x = 'log2FoldChange',
+    y = 'padj',
+    title = 'CSFvPBMCinLym',
+    pCutoff = 10e-3,
+    FCcutoff = 2,
+    pointSize = 2.5, ylim=c(0, 50),
+    labSize = 4.0,
+    col=c('grey', 'grey', 'grey', 'grey30'),
+    colAlpha = 1)
+ggsave(filename = "plots/1.PUB/CSVvPBMCinLym.svg", width = 4.5, height = 6)
+
+```
+
+```{r}
+sessionInfo()
+```

@@ -1,0 +1,43 @@
+---
+title: "&nbsp;"
+description: " "
+output:
+  distill::distill_article:
+    css: ../fig-styles.css
+    toc: false
+---
+<div id="fig-home-bar">
+  <a href="../index.html">Home</a>
+</div>
+
+  <header id="fig-header">
+    <h1> Cellular composition of the CSF compartment in VS-PWH </h1>
+    <p class="fig-subtitle">
+    </p>
+  </header>
+
+  <main id="fig-main">
+    <section id="fig-image-panel">
+      ![](../figs/F4.jpg){#fig4}
+<section id="fig-caption-panel">
+      <h3> Figure 4 </h3>
+      <ul>
+      
+        <li>A ) UMAP of single-cell RNA sequencing of CSF-derived cells which contain CD4 and CD8 T-cells, myeloid cells, NK cells, and B-cells.
+        <a href="pages/Analysis.html">View code </a> </li> 
+       
+        <li>B ) Proportions of each CSF sample.
+        <a href="pages/Analysis.html">View code </a> </li>
+        
+        <li>C ) Congruence analysis using SingleR of the predicted cell-type within each cluster using the Cantoni et al.2024 single cell reference atlas
+        <a href="pages/Analysis.html">View code </a> </li>
+        
+       <li>D ) Top gene expression markers for each cell type.
+       <a href="pages/Analysis.html">View code </a> </li>
+       
+       
+  </ul>
+    
+
+
+</div>

@@ -1,0 +1,250 @@
+---
+title: "Granulator_Hayes_bulk_sc"
+author: "AG"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+After label transfer from Cantoni to Hayes single cell, lets check the degranulate Hayes bulk using Hayes single cell as reference.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(SingleCellExperiment)
+library(Seurat)
+library(biomaRt)
+library(cowplot)
+library(granulator)
+library(tximport)
+library(zellkonverter)
+
+set.seed(42)
+```
+
+Give a check to how the correspondence between single cell objects Cantoni and Hayes looks like
+
+```{r}
+#Load single cell data
+load("~/Desktop/HIV/HIV/data/7.TidyData_v3.rda")
+meta <- TidyDat@meta.data
+
+#Load SingleR results
+singleR_results <- readRDS("~/Desktop/HIV/Granulator/singleR_results.rds")
+table(singleR_results$labels)
+table(singleR_results$labels)
+
+#Add the atlas labels as idents
+labels <- as.data.frame(singleR_results)
+labels <- labels[, c(8,9, 10)]
+
+rownames(labels) <- as.character(rownames(labels))
+rownames(TidyDat@meta.data) <- as.character(rownames(TidyDat@meta.data))
+ 
+#Add the columns into seurat metadata
+TidyDat@meta.data$atlas_labels <- labels[rownames(TidyDat@meta.data), "labels"]
+TidyDat@meta.data$atlas_labels.pruned <- labels[rownames(TidyDat@meta.data), "pruned.labels"]
+TidyDat@meta.data$delta.next <- labels[rownames(TidyDat@meta.data), "delta.next"]
+
+Idents(TidyDat) <- TidyDat@meta.data$atlas_labels
+
+
+```
+
+#Quick bargraph
+
+```{r}
+#Get the total numbers of cells per cell type and atlas label
+meta <- TidyDat@meta.data
+
+num_tot_cells <- meta %>%
+  dplyr::select(cell_types, atlas_labels, ID) %>%
+  dplyr::count(cell_types, atlas_labels, name = "total_cells") %>%
+  ungroup()
+
+
+#Get the number of cell_types that fall under each of the cell labels in Wu atlas
+# Proportions will sum 1. Package library(scales) will scale the graph as percentage
+prop_within_celltype <- num_tot_cells %>%
+    group_by(cell_types) %>%
+    mutate(prop = total_cells / sum(total_cells)) %>%
+    ungroup()
+
+library(scales)
+
+ggplot(prop_within_celltype,
+       aes(x = cell_types, y = prop, fill = atlas_labels)) +
+    geom_col(width = 0.9) +
+    scale_y_continuous(labels = percent) +
+    labs(x = "Hayes 2025 cell type", y = "% cell population label correspondence",
+         fill = "Atlas Wu 2025 Cell Population",
+         title = "Overlapping distribution of cell population \n between Hayes 2025 and Wu 2025 Atlas") +
+    theme_cowplot() +
+      theme(
+    axis.text.x  = element_text(angle = 90, vjust = 0.5),
+    axis.title.x = element_text(margin = margin(t = 20)),  
+    axis.title.y = element_text(size = 12),
+    legend.text   = element_text(size = 10),   
+    legend.title  = element_text(size = 9)
+  )
+
+#The bargraph is already saved in Granulator_ALL.qmd
+```
+
+### Prepare for Granulator
+
+Load the information about gene length
+
+```{r}
+#Load bulk data
+load("~/Desktop/HIV/July25/filt_dds_env.rda")
+dds
+
+#Load info about gene lenght
+gene.leng <- read.table("~/Desktop/HIV/Granulator/TPM/2033-CSF-Lym.tsv", header = TRUE, comment.char = "#", stringsAsFactors = FALSE)
+gene.leng <- gene.leng[, c("Geneid",  "Length")]
+
+#NOTE THAT IS IN ENSEMBL but we have the names in the genes object loaded with dds
+#Add the symbol info
+gene.leng <- merge(gene.leng, genes, by.x = "Geneid", by.y = "gene_id", all.x = TRUE)
+
+```
+
+##BULK
+
+```{r}
+#Bulk 
+rownames(dds) <- rowData(dds)$gene_name
+bulk.mtx <- counts(dds)
+length(rownames(bulk.mtx)) # 24791
+
+rownames(bulk.mtx)[duplicated(rownames(bulk.mtx))] 
+bulk.mtx <- bulk.mtx[!duplicated(rownames(bulk.mtx)), ]
+length(rownames(bulk.mtx)) # 24670
+
+
+
+#single cell
+library(Matrix)
+TidyDat <- JoinLayers(TidyDat, assay = "RNA")
+
+#Convert to single cell experiment
+hayes.sce <- as.SingleCellExperiment(TidyDat, assay = "RNA")
+hayes.sce <- aggregateData(hayes.sce, assay = "counts", by = c("atlas_labels" )) #output is a single cell experiment, so get the matrix
+
+sce.mtx <- assay(hayes.sce)
+sce.mtx <- as.matrix(sce.mtx)
+sce.genes <- rownames(sce.mtx) #36,606
+
+##### 
+length(rownames(bulk.mtx)) # 24,670
+length(rownames(sce.mtx)) #36,606
+
+#So far the bulk vector lenght is 24,670 while single cell is 36,606
+#Get only the common genes
+common <- intersect(rownames(bulk.mtx), rownames(sce.mtx)) #15722
+
+#filter sce
+sce.mtx <- sce.mtx[rownames(sce.mtx) %in% common, , drop = FALSE]
+#filter bulk
+bulk.mtx<- bulk.mtx[rownames(bulk.mtx) %in% common, , drop = FALSE]
+
+
+length(rownames(bulk.mtx)) # 15722
+length(rownames(sce.mtx)) #15722
+
+#make bulk vector 
+matching_idx <- match(rownames(bulk.mtx), gene.leng$gene_name) #15722
+bulk.vector <- gene.leng[matching_idx, c(1, 2,3)] #15722
+
+#make single cell vector
+matching_idx_sc <- match(rownames(sce.mtx), gene.leng$gene_name)
+sce.vector <- gene.leng[matching_idx_sc, c(1, 2,3)]
+
+#Be sure that genes in BULK vector and matrix are in same order
+bulk.vector <- bulk.vector %>%
+  mutate(gene_name = factor(gene_name, levels = rownames(bulk.mtx))) %>%
+  arrange(gene_name)
+
+#be super sure
+sure_dfBulk <- data.frame(
+  b.vec = bulk.vector$gene_name,
+  matx = rownames(bulk.mtx))
+
+
+#Be sure that genes in single cell vector and matrix are in same order
+sce.vector <- sce.vector %>%
+  mutate(gene_name = factor(gene_name, levels = rownames(sce.mtx))) %>%
+  arrange(gene_name)
+
+#be super sure
+sure_dfSC <- data.frame(
+  b.vec = sce.vector$gene_name,
+  matx = rownames(sce.mtx))
+
+#Get the TPMs
+
+bulk.vector <- bulk.vector$Length
+bulk.tpm <- get_TPM( counts = bulk.mtx, effLen = bulk.vector)
+
+sce.vector <- sce.vector$Length
+sce.tpm <- get_TPM(counts = sce.mtx, effLen = sce.vector)
+
+```
+
+##Grnaulator
+
+```{r}
+decon <- deconvolute(m = bulk.tpm, sigMatrix = sce.tpm)
+saveRDS(decon, file = "~/Desktop/HIV/Granulator/granulator_singlecell_bulk_allHayes.rds")
+
+decon.plot <-  plot_deconvolute(deconvoluted = decon, scale = FALSE, labels = TRUE)
+plot(decon.plot)
+
+```
+
+```{r}
+plot_proportions(deconvoluted = decon, method ='dtangle', signature = 'sig1')
+```
+
+```{r}
+ggsave("~/Desktop/HIV/Granulator/plots/granulator_allHayes_bulkbysample.svg", width = 14, height = 10, dpi = 300)
+```
+
+```{r}
+plot_proportions(deconvoluted = decon, method ='nnls', signature = 'sig1')
+```
+
+```{r}
+ plot_proportions(deconvoluted = decon, method ='ols', signature = 'sig1')
+```
+
+```{r}
+plot_proportions(deconvoluted = decon, method ='qprog', signature = 'sig1')
+
+```
+
+```{r}
+plot_proportions(deconvoluted = decon, method ='qprogwc', signature = 'sig1')
+```
+
+```{r}
+plot_proportions(deconvoluted = decon, method ='rls', signature = 'sig1')
+```
+
+```{r}
+plot_proportions(deconvoluted = decon, method ='svr', signature = 'sig1')
+```
+
+```{r}
+correl <- correlate(deconvoluted = decon)
+plot_correlate(correlated = correl, method="boxplot", legend=TRUE)
+```
+
+```{r}
+dtangle.table <- as.data.frame(decon$proportions$dtangle_sig1)
+
+
+```

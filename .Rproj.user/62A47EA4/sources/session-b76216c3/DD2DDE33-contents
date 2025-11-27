@@ -1,0 +1,60 @@
+
+#TUTORIAL OF GRANULATOR from https://www.bioconductor.org/packages/devel/bioc/vignettes/granulator/inst/doc/granulator.html
+library(BiocManager)
+
+BiocManager::install("granulator")
+library(granulator)
+
+#The tutorial data bulk RNA-seq gene expression data of peripheral blood mononuclear cells (PBMCs) publicly available on the NCBI database under GEO accession number GSE107011 
+#but this is a subset
+load_ABIS()
+
+#A subset of the PBMCs bulk RNA-seq data, stored in bulkRNAseq_ABIS, 
+#consists of a gene (rows) by sample (columns) matrix with transcript-per-million (TPM) gene expression values
+bulkRNAseq_ABIS[1:5, 1:5]
+
+#Load reference profiles. Here stored in sigMatrix_ABIS_S0. 
+#Other references profile matrices stored in sigMatrix_ABIS_S1, sigMatrix_ABIS_S2, and sigMatrix_ABIS_S3
+sigMatrix_ABIS_S0[1:5, 1:5]
+
+#MEASURED CELL TYPE PROPORTIONS 
+#The measured cell type proportions, stored in grou
+ndTruth_ABIS, consists of a sample
+#(rows) by cell type (columns) matrix with proportions expressed in percent
+groundTruth_ABIS[1:5, 1:5]
+
+############ WORKFLOW 
+
+#compare the references
+sigList = list(
+    ABIS_S0 = sigMatrix_ABIS_S0,
+    ABIS_S1 = sigMatrix_ABIS_S1, 
+    ABIS_S2 = sigMatrix_ABIS_S2, 
+    ABIS_S3 = sigMatrix_ABIS_S3)
+
+plot_similarity(sigMatrix=sigList)
+
+#A useful metric to evaluate the quality of reference profile matrices is to compute 
+#the Condition Number k, which measures how sensitive the deconvolution is to variability in the input data. 
+#Generally, a matrix with low condition number (k close to 1) is well-conditioned, as it leads to a stable solution.
+
+
+#DECONVOLUTION
+
+decon <- deconvolute(m = bulkRNAseq_ABIS, sigMatrix = sigList)
+
+decon$proportions$svr_ABIS_S0[1:5, 1:5]
+
+
+plot_proportions(deconvoluted = decon, method = 'svr', signature = 'ABIS_S0')
+
+
+plot_deconvolute(deconvoluted = decon, scale = TRUE, labels = FALSE)
+
+#The third step in the workflow is dedicated to assessing the 
+#performance of deconvolution by taking advantage of available known cell types abundances
+bench <- benchmark(deconvoluted = decon, ground_truth = groundTruth_ABIS)
+head(bench$summary)
+head(bench$rank)
+
+plot_regress(benchmarked = bench, method = 'svr', signature = 'ABIS_S0')

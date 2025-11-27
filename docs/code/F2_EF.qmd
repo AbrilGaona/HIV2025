@@ -1,0 +1,60 @@
+---
+title: "CSF Bulk 2. Differential Expression CSF vs PBMC"
+author: "Lindsay N Hayes"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+
+### About the Data
+
+DESeq2 analysis of CSF and PBMC myeloid and lymphoid cells with *design = \~ 0 + group* the groups include: PBMC_Myel, PBMC_Lym, CSF_Myel, CSF_Lym.
+Differential expression between CSF and PBMC in either myeloid cells or lymphoid cells.
+n = 6 CSF samples and 6 PBMC samples each bulk sorted for myeloid and lymphoid cells.
+
+```{r, packages, message=FALSE}
+library(DESeq2)
+library(ggplot2)
+library(cowplot)
+library(pheatmap)
+library(ggrepel)
+library(grid)
+library(rstatix)
+```
+## Load Data
+```{r}
+load("data/filt_dds_env.rda")
+resultsNames(dds)
+```
+### GOIs
+```{r, fig.height=4, fig.width=4}
+# plot genes of interest
+GOIs <- c("ID1", "A2M", "GNLY", "PROKR2")
+
+for (p in GOIs){
+  geneid <- rownames(dds)[which(mcols(dds)$gene_name == p)]
+  d <- plotCounts(dds, gene=geneid, intgroup=c("tissue", "cell"), returnData = TRUE)
+
+  plot <- ggplot(d, aes(x=cell, y=count, color=tissue)) + 
+    geom_point(size=3, position=position_jitterdodge(dodge.width = 0.5, jitter.width = 0)) + 
+    stat_summary(fun.y = "mean", geom = "point", aes(group = tissue), 
+                 position = position_dodge(width = 0.5), color = "black", shape = "_", size = 10) + 
+    scale_color_manual(values = c("cornflowerblue","red")) + 
+    expand_limits(y=0) + ylab("normalized count") + xlab("") + labs(subtitle = p) + 
+    theme_cowplot() + theme(legend.position = "none")
+  print(plot)
+  # CSF = blue, PBMC = red
+  # save plot
+  #350x350
+  ggsave(filename=paste(p,".jpeg", sep = ""), plot = plot, width = 60, height = 80, units = "mm", path = "plots/", bg="white")
+}
+```
+
+```{r}
+sessionInfo()

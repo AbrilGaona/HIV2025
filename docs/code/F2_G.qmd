@@ -1,0 +1,119 @@
+---
+title: "CSF Bulk 2. Granulator Deconvolution of Bulk CSF and PBMC "
+author: "Abril Gaona"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+### About the Data
+The bulk sequencing data from CSF and PBMCS were deconvoluted using the Bioconductor “Granulator” package, using the dataset from Cantoni et al., 2025, as an identity reference. 
+Preprocessing: The raw counts from Cantoni et al., 2025 (consisting of 64,394 genes and 403,973 cells) were subsetted to contain only the genes in common with our bulk data (#23,616). The subsetted raw counts were aggregated by “cell type” and the matrix was obtained. This matrix and gene lenght information were used to determine the transcripts per million (TPMs), which are the direct input required by Granulator.
+```{r, packages, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(SingleCellExperiment)
+library(Seurat)
+library(biomaRt)
+library(cowplot)
+library(granulator)
+library(tximport)
+library(zellkonverter)
+library(muscat)
+library(tidyverse)
+set.seed(1995)
+```
+
+```{r}
+#load bulk
+load("data/filt_dds_env.rda")
+#load gene length information
+gene.leng <- read.table("data/2033-CSF-Lym.tsv", header = TRUE, comment.char = "#", stringsAsFactors = FALSE)
+gene.leng <- gene.leng[, c("Geneid",  "Length")]
+#gene.leng$Geneid <- sub("\\..*$", "", gene.leng$Geneid)
+#Add the symbol info
+gene.leng <- merge(gene.leng, genes, by.x = "Geneid", by.y = "gene_id", all.x = TRUE)
+#prepare data
+rownames(dds) <- rowData(dds)$gene_name
+bulk.meta <- as.data.frame(dds@colData)
+#get count matrix by group
+bulk.mtx <- counts(dds)
+all(colnames(bulk.mtx) == rownames(bulk.meta))  #TRUE
+by_group <- split(seq_along(colnames(bulk.mtx)), bulk.meta$group)
+bulk.group.mtx <- sapply(by_group, function(idx) {
+  rowSums(bulk.mtx[, idx, drop = FALSE])
+})
+length(rownames(bulk.group.mtx)) 
+#check for duplicated genes
+rownames(bulk.group.mtx)[duplicated(rownames(bulk.group.mtx))] 
+bulk.group.mtx <- bulk.group.mtx[!duplicated(rownames(bulk.group.mtx)), ]
+length(rownames(bulk.group.mtx))
+#make vector with gene length
+matching_idx <- match(rownames(bulk.group.mtx), gene.leng$gene_name)
+bulk.group.vector <- gene.leng[matching_idx, c(1, 2,3)]
+#IMPORTANT be sure that genes are in the same order in the matrix and in the vector
+bulk.group.vector <- bulk.group.vector %>%
+mutate(gene_name = factor(gene_name, levels = rownames(bulk.group.mtx))) %>%
+arrange(gene_name)
+#double check
+identical(as.character(bulk.group.vector$gene_name), rownames(bulk.group.mtx)) #TRUE
+bulk.group.vector <- bulk.group.vector$Length
+bulk.group.tpm <- get_TPM( counts = bulk.group.mtx, effLen = bulk.group.vector)
+#single cell reference
+cantoni_mtx_sub <- readRDS("data/cantoni_mtx_sub.rds")
+length(rownames(cantoni_mtx_sub))
+matching_idx <- match(rownames(cantoni_mtx_sub), gene.leng$gene_name)
+sce.vector <- gene.leng[matching_idx, c(1, 2,3)]
+sce.vector <- sce.vector %>%
+mutate(gene_name = factor(gene_name, levels = rownames(cantoni_mtx_sub))) %>%
+arrange(gene_name)
+identical(as.character(sce.vector$gene_name), rownames(cantoni_mtx_sub)) #TRUE
+sce.vector <- sce.vector$Length
+sce.tpm <- get_TPM(counts = cantoni_mtx_sub, effLen = sce.vector)
+
+```
+## Granulator
+```{r}
+decon.group <- deconvolute(m = bulk.group.tpm, sigMatrix = sce.tpm)
+saveRDS(decon.group, file = "results/gran_bulk_by_groupV4.rds")
+#Plots
+#absolute proportions per model
+decon.plot <-  plot_deconvolute(deconvoluted = decon.group, scale = FALSE, labels = TRUE)
+plot(decon.plot)
+#plot each model
+plot_proportions(deconvoluted = decon.group, method ='dtangle', signature = 'sig1')
+plot_proportions(deconvoluted = decon.group, method ='nnls', signature = 'sig1')
+plot_proportions(deconvoluted = decon.group, method ='ols', signature = 'sig1')
+plot_proportions(deconvoluted = decon.group, method ='qprog', signature = 'sig1')
+plot_proportions(deconvoluted = decon.group, method ='qprogwc', signature = 'sig1')
+plot_proportions(deconvoluted = decon.group, method ='rls', signature = 'sig1')
+plot_proportions(deconvoluted = decon.group, method ='svr', signature = 'sig1')
+#plot correlations
+correl <- correlate(deconvoluted = decon.group)
+plot_correlate(correlated = correl, method="boxplot", legend=TRUE)
+```
+## Plot
+dtangle works the best. 
+Get the proportions and graph
+```{r}
+dtangle.table <- as.data.frame(decon.group$proportions$dtangle_sig1)
+table<- dtangle.table %>% rownames_to_column("group")%>%
+    pivot_longer(
+    cols = -group,
+    names_to = "cell_type",
+    values_to = "percent") 
+table$group <- factor(table$group,levels = c("CSF_Lym","PBMC_Lym","CSF_Myel","PBMC_Myel"))
+ggplot(table, aes(x = group, y = percent, fill = cell_type))+ geom_col(position = "fill") + theme_cowplot() +
+    scale_y_continuous(labels = scales::percent_format())
+#ggsave("plots/Gran_bulk_by_groupV4.svg", width = 12, height = 10, dpi = 300)
+```
+
+```{r}
+sessionInfo()
+```
