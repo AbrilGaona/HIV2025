@@ -24,22 +24,18 @@ output:
       <h3> Figure 3 </h3>
       <ul>
       
-        <li>A ) Heatmap expression of the microglia signature gene set defined by Gosselin et al 2017 in CSF and peripheral blood derived myeloid and lymphoid cells.
-        <a href="pages/Analysis.html">View code </a> </li> 
+        <li>A ) Heatmap expression of the microglia signature gene set defined by Gosselin et.al., 2017 in CSF and peripheral blood derived myeloid and lymphoid cells. </li> 
        
-        <li>B ) Heatmap expression of brain border associate macrophage markers in CSF and peripheral blood derived myeloid and lymphoid cells.
-        <a href="pages/Analysis.html">View code </a> </li>
+        <li>B ) Heatmap expression of brain border associate macrophage markers in CSF and peripheral blood derived myeloid and lymphoid cells. </li>
         
-        <li>C ) Heatmap expression of genes enriched in the CSF compartment.
-        <a href="pages/Analysis.html">View code </a> </li>
+        <li>C ) Heatmap expression of genes enriched in the CSF compartment. </li>
         
-       <li>D ) Unbiased identification of gene modules enriched based on compartment (CSF vs PBMC) or based on cell type (lymphoid vs myeloid).
-       <a href="pages/Analysis.html">View code </a> </li>
+       <li>D ) Unbiased identification of gene modules enriched based on compartment (CSF vs PBMC) or based on cell type (lymphoid vs myeloid).Color represents correlation coefficient and value inside each square is the p-value for significant association. </li>
        
-       <li>E ) Genes in the brown module are enriched in CSF myeloid cells, while genes in the black module are enriched across both myeloid and lymphoid CSF populations.
-       <a href="pages/Analysis.html">View code </a> </li>
+       <li>E ) Genes in the brown module are enriched in CSF myeloid cells, while genes in the black module are enriched in the CSF compartment across both myeloid and lymphoid cells. </li>
        
        <li>F ) Gene set enrichment analysis of the black and brown module genes using biological processes and molecular pathways.
+       <br><a href="../code/F3_250121_Bulk_3.Heatmaps.html" target="_blank" rel="noopener"> View code. </a> </li>
        
   </ul>
     

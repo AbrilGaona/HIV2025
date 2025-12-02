@@ -24,7 +24,7 @@ output:
       <ul>
       
         <li>A-B) Flow cytometry of cerebrospinal fluid (CSF) derived cells (A) and peripheral blood mononuclear cells, PBMCs(B).
-        <a href="../figs/F1_AB.jpg" target="_blank" rel="noopener"> Check it closer! </a> </li> 
+        <a href="../figs/F1_AB_cntrd.html" target="_blank" rel="noopener"> Check it closer! </a> </li> 
        
         <li>C ) Quantification of the percent of cells in the myeloid or lymphoid gates.
         <a href="../code/F1_C.html" target="_blank" rel="noopener"> View code </a> </li>
@@ -37,7 +37,7 @@ output:
        <a href="../code/F1_DEF.html" target="_blank" rel="noopener"> View code for D-F </a> </li> 
        
        <li>G-O ) UMAP of FACS data from all 6 subjects with cells from CSF or PBMC (H) and expression of and expression of CD3, CD20 or CD56 (I), CD11B (J), TLR2 (K), HLA-DR (L), P2RY12 (M), CD14 (N) and CD16 (O).
-       <a href="../figs/F1_GO.jpg" target="_blank" rel="noopener"> Check it closer! </a> </li> 
+       <a href="../figs/F1_GO_cntrd.html" target="_blank" rel="noopener"> Check it closer! </a> </li> 
        <li> n= 6 paired CSF and PBMC samples analyzed using paired t-test. * p<0.05.
 
   </ul>

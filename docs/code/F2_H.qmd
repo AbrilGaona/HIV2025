@@ -1,0 +1,132 @@
+---
+title: "CSF Bulk 2. Granulator Deconvolution of Bulk Myeloid CSF "
+author: "Abril Gaona"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+### About the Data
+The bulk sequencing data from CSF and PBMCS were deconvoluted using the Bioconductor “Granulator” package, using the dataset from Cantoni et al., 2025, as an identity reference. 
+Preprocessing: The Myeloid raw counts from Cantoni et al., 2025 (consisting of 64,394 genes and 59,770 cells) were aggregated by cell type.This matrix was used to obtain used to determine the transcripts per million (TPMs), which are the direct input required by Granulator. Only common genes between our bulk object and the single cell reference were preserved. 
+
+```{r, packages, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(SingleCellExperiment)
+library(Seurat)
+library(biomaRt)
+library(cowplot)
+library(granulator)
+library(tximport)
+library(zellkonverter)
+library(muscat)
+library(tidyverse)
+set.seed(1995)
+```
+## Load and prepare data
+```{r}
+#load bulk
+load("data/filt_dds_env.rda")
+#load gene length information
+gene.leng <- read.table("data/2033-CSF-Lym.tsv", header = TRUE, comment.char = "#", stringsAsFactors = FALSE)
+gene.leng <- gene.leng[, c("Geneid",  "Length")]
+#gene.leng$Geneid <- sub("\\..*$", "", gene.leng$Geneid)
+#Add the symbol info
+gene.leng <- merge(gene.leng, genes, by.x = "Geneid", by.y = "gene_id", all.x = TRUE)
+#Filter myeloid and prep data
+rownames(dds) <- rowData(dds)$gene_name
+bulk.meta <- as.data.frame(dds@colData)
+keep <- rownames(bulk.meta)[bulk.meta$cell %in% "myeloid"]
+dds <- dds [, keep]
+bulk.mtx <- counts(dds)
+all(colnames(bulk.mtx) == rownames(bulk.meta))  #TRUE
+by_tissue <- split(seq_along(colnames(bulk.mtx)), bulk.meta$tissue)
+counts_by_tissue <- sapply(by_tissue, function(idx) {
+  rowSums(bulk.mtx[, idx, drop = FALSE])
+})
+
+#check for duplicated genes
+rownames(counts_by_tissue)[duplicated(rownames(counts_by_tissue))] 
+counts_by_tissue <- counts_by_tissue[!duplicated(rownames(counts_by_tissue)), ]
+length(rownames(counts_by_tissue))
+
+#make vector with gene length
+matching_idx <- match(rownames(counts_by_tissue), gene.leng$gene_name)
+bulk.vector <- gene.leng[matching_idx, c(1, 2,3)]
+#IMPORTANT be sure that genes are in the same order in the matrix and in the vector
+bulk.vector <- bulk.vector %>%
+mutate(gene_name = factor(gene_name, levels = rownames(counts_by_tissue))) %>%
+arrange(gene_name)
+#double check
+identical(as.character(bulk.vector$gene_name), rownames(bulk.group.mtx)) #TRUE
+bulk.vector <- bulk.vector$Length
+bulk.tpm <- get_TPM( counts = counts_by_tissue, effLen = bulk.vector)
+#single cell reference
+sce.myeloid <- readH5AD("data/myeloid_raw_counts.h5ad")
+library(muscat) 
+sce <- aggregateData(sce.myeloid, assay = "X", by = c("cell_type" ))
+sce.mtx <- assay(sce)
+sce.mtx <- as.matrix(sce.mtx)
+#keep common
+common <- intersect(sce.genes$gene_id, rownames(counts_by_tissue)) 
+sce.mtx <- sce.mtx[rownames(sce.mtx) %in% common, , drop = FALSE]
+matching_idx <- match(rownames(sce.mtx), gene.leng$gene_name)
+sce.vector <- gene.leng[matching_idx, c(1, 2,3)]
+identical(as.character(sce.vector$gene_name), rownames(sce.mtx)) #TRUE
+sce.vector <- sce.vector$Length
+sce.tpm <- get_TPM( counts = sce.mtx, effLen = sce.vector)
+
+```
+## Granulator
+```{r}
+d.meyloid.tissue <- deconvolute(m = bulk.tpm, sigMatrix = sce.tpm) 
+#saveRDS(d.meyloid.tissue, file = "data/decon.myeloid_bytissue.rds" )
+#Plots
+#absolute proportions per model
+d.plot <-  plot_deconvolute(deconvoluted = d.myeloid.tissue, scale = FALSE, labels = TRUE)
+plot(d.plot)
+#plot each model
+plot_proportions(deconvoluted = d.myeloid.tissue, method ='dtangle', signature = 'sig1')
+plot_proportions(deconvoluted = d.myeloid.tissue, method ='nnls', signature = 'sig1')
+plot_proportions(deconvoluted = d.myeloid.tissue, method ='ols', signature = 'sig1')
+plot_proportions(deconvoluted = d.myeloid.tissue, method ='qprog', signature = 'sig1')
+plot_proportions(deconvoluted = d.myeloid.tissue, method ='qprogwc', signature = 'sig1')
+plot_proportions(deconvoluted = d.myeloid.tissue, method ='rls', signature = 'sig1')
+plot_proportions(deconvoluted = d.myeloid.tissue, method ='svr', signature = 'sig1')
+```
+## Plot
+qprogwc works the best. 
+Get the proportions and graph
+```{r}
+qprogwc.table <- as.data.frame(d.myeloid.tissue$proportions$qprogwc_sig1)
+table<- qprogwc.table %>% rownames_to_column("group")%>%
+    pivot_longer(
+    cols = -group,
+    names_to = "cell_type",
+    values_to = "percent") 
+#clean
+table <- table %>% 
+    filter(percent != 0) %>%
+    mutate(clean_cell_types = case_when(
+        cell_type %in% c("cDC1", "ACY3+ DCs") ~ "DCs",
+        cell_type %in% c("CD14 Mono", "IFN CD14 Mono") ~ "CD14 Mono",
+        cell_type %in%  c("MHCII(hi) BAM") ~ "BAM",
+        TRUE ~ cell_type
+        ))
+    
+table$clean_cell_types <- factor(table$clean_cell_types,levels = c("DCs","CD14 Mono", "BAM", "Microglia", "Neutrophil"))
+ggplot(table, aes(x = group, y = percent, fill = clean_cell_types))+ geom_col(position = "fill") + theme_cowplot() +
+    scale_y_continuous(labels = scales::percent_format())
+#ggsave("plots/Gran_Myeloid_tissueV4.svg", width = 12, height = 10, dpi = 300)
+```
+
+```{r}
+sessionInfo()
+```

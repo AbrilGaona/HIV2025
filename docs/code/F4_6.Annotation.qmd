@@ -1,0 +1,111 @@
+---
+title: "6.Annotation & Abundance"
+author: "Lindsay Hayes & Felix Asare"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+
+```{r, load packages, echo=FALSE, message=FALSE}
+library(Seurat)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+
+load("data/5.MNN.rda")
+FinalFilter
+```
+
+## Annotate Cell Types
+```{r, all_cells}
+DimPlot(FinalFilter, reduction = "umap.mnn", group.by = "mnn_clusters", label = T)
+ggsave("plots/2.FastMNN/umap.svg", width = 5, height = 5)
+
+GOI <- c("NCAM1", "KLRD1", "GNLY","CD3E", "CD4", "CD8A", "FOXP3","CD79A", "MS4A1", "IGHM", "C1QA","CD14","HEXB", "CSF1R", "AIF1", "CALD1", "S100A13", "KCNMA1")
+DotPlot(FinalFilter, features = GOI) + coord_flip()
+ggsave("plots/2.FastMNN/dot.svg", width = 8, height = 5)
+
+# Rename the levels of the factor
+FinalFilter$cell_types <- FinalFilter$mnn_clusters
+cell_types <- c("CD4", "CD8", "CD8", "Myeloid", "CD8", "CD4", "CD4", "Myeloid", "NK", "Myeloid", "Bcell", "Mesenchymal", "CD8")
+levels(FinalFilter@meta.data$cell_types) <- cell_types
+table(FinalFilter$cell_types)
+```
+
+#Visualize
+```{r, umap}
+DimPlot(FinalFilter, reduction = "umap.mnn", group.by = "cell_types", cols = c("seagreen3", "lightgoldenrod", "steelblue2","hotpink", "purple", "grey"))
+ggsave("plots/3.clusters/umap.svg", width = 6, height = 5)
+```
+
+## CellType Abundance
+```{r, abundance}
+tmp <-table(FinalFilter$cell_types)
+round(prop.table(tmp)*100,1)
+
+table(FinalFilter$cell_types, FinalFilter$ID)
+tmp <-table(FinalFilter$cell_types, FinalFilter$ID)
+round(prop.table(tmp, margin = 2)*100,1)
+
+abundance <- as.data.frame(round(prop.table(tmp, margin = 2)*100,1))
+colnames(abundance) <- c("celltype", "ID", "Freq")
+
+ggplot(abundance, aes(fill=celltype, y=Freq, x=ID)) + 
+  geom_bar(position="stack", stat="identity") + theme_cowplot() +
+  scale_fill_manual(values = c("steelblue2", "lightgoldenrod","seagreen3","hotpink", "purple", "grey"))
+ggsave("plots/3.clusters/stackedbar.svg", width = 5, height = 6)
+```
+
+```{r}
+save(FinalFilter, file = "data/6.annotated.rda")
+```
+
+
+```{r}
+TidyDat <- JoinLayers(FinalFilter)
+TidyDat
+```
+
+
+### Identify celltype enriched genes
+```{r, clusters}
+Idents(TidyDat) <- TidyDat$cell_types
+cluster_markers <- FindAllMarkers(TidyDat,
+                                  logfc.threshold = 0.5,
+                                  test.use = "roc",
+                                  min.pct = 0.25,
+                                  only.pos = TRUE)
+table(cluster_markers$cluster, dnn = "roc")
+write.csv(cluster_markers, file = "writes/cluster_markers_roc_251124.csv")
+```
+
+# Heatmap
+```{r, heatmap}
+#| fig-height: 12
+#| fig-width: 8
+
+# Manually curate a list of top cluster marker genes
+heatmap_genes <- read.csv("writes/cluster_markers_roc_heatmap.csv")
+
+GOI <- heatmap_genes$gene
+TidyDat <- ScaleData(TidyDat, features = GOI)
+
+DotPlot(TidyDat, features = GOI, cols = c("gray90", "black"), group.by = "cell_types") + coord_flip() + 
+  scale_color_gradient2(
+  low = "white",    
+  mid = "white",     
+  high = "black",    
+  midpoint = 0,      
+  limits = c(-1,2.5))
+
+ggsave("plots/3.clusters/cluster_heatmap.svg", width = 7, height = 12)
+```
+
+```{r}
+sessionInfo()
+```

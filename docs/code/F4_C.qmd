@@ -1,0 +1,104 @@
+---
+title: "F4_C Composition of the CSF compartment in VS-PWH"
+author: "Abril Gaona"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+### About the Data
+
+```{r, packages, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(SingleCellExperiment)
+library(Seurat)
+library(dplyr)
+library(SingleR)
+library(scuttle)
+library(scRNAseq)
+library(ggplot2)
+library(scales)
+library(cowplot)
+set.seed(1995)
+```
+### Load and prepare data
+```{r}
+load("data/6.annotated.rda")
+FinalFilter <- JoinLayers(FinalFilter)
+#SingleR require log norm counts
+sce_hayes <- as.SingleCellExperiment(FinalFilter) 
+sce_meta <- as.data.frame(colData(sce_hayes))
+#load Cantoni object 
+sce_atlas <- readH5AD("data/atlas_raw_counts.h5ad")
+sce_atlas <- logNormCounts(
+    sce_atlas,
+    assay.type = "X",  
+    name = "logcounts" 
+)
+```
+
+### SingleR
+```{r}
+res4.singleR <- SingleR(test=sce_hayes, ref=sce_atlas, labels=sce_atlas$cell_type, de.method="wilcox")
+#saveRDS(res4.singleR, file = "data/res4.singleR.rds")
+#explore results
+all.heatmap <- plotScoreHeatmap(res4.singleR)
+#heatmap w/both labels
+heatmap.both <-plotScoreHeatmap(res4.singleR, annotation_col=as.data.frame(colData(sce_hayes)[,"cell_types",drop=FALSE]))
+#QC plots
+plotDeltaDistribution(res4.singleR)
+plotScoreDistribution(res4.singleR)
+```
+### Plot
+```{r}
+t1 <- as.data.frame(res4.singleR)
+t2 <- t1[, c(8,9,10)]
+rownames(t2) <- as.character(rownames(t2))
+rownames(FinalFilter@meta.data) <- as.character(rownames(FinalFilter@meta.data))
+FinalFilter@meta.data$atlas_labels <- t2[rownames(FinalFilter@meta.data), "labels"]
+FinalFilter@meta.data$atlas_labels.pruned <- t2[rownames(FinalFilter@meta.data), "pruned.labels"]
+FinalFilter@meta.data$delta.next <- t2[rownames(FinalFilter@meta.data), "delta.next"]
+#table for plot
+meta <- FinalFilter@meta.data
+num_tot_cells <- meta %>%
+  dplyr::select(cell_types, atlas_labels, ID) %>%
+  dplyr::count(cell_types, atlas_labels, name = "total_cells") %>%
+  dplyr::ungroup()
+#optional
+num_tot_cells <- num_tot_cells %>%
+    complete(cell_types, atlas_labels, fill = list(total_cells = 0))
+
+prop_within_celltype <- num_tot_cells %>%
+    group_by(cell_types) %>%
+    mutate(prop = total_cells / sum(total_cells)) %>%
+    ungroup()
+
+ggplot(prop_within_celltype,
+       aes(x = cell_types, y = prop, fill = atlas_labels)) +
+    geom_col(width = 0.9) +
+    scale_y_continuous(labels = percent) +
+    labs(x = "Hayes 2025 azimuth based cell type", y = "% cell population label congruence",
+         fill = "Cantoni et.al. Labels",
+         title = " ") +
+    theme_cowplot() +
+      theme(
+    axis.text.x  = element_text(angle = 90, vjust = 0.5),
+    axis.title.x = element_text(margin = margin(t = 20)),  
+    axis.title.y = element_text(size = 12),
+    legend.text   = element_text(size = 10),   
+    legend.title  = element_text(size = 9)
+  )
+
+#ggsave("plots/SingleR_bulkALL_congruence.svg", width = 14, height = 10, dpi = 300)
+```
+
+```{r}
+sessionInfo()
+```

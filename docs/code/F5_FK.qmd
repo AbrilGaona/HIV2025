@@ -1,0 +1,112 @@
+---
+title: "F5 Sub-clustering of CSF myeloid cell subsets in VS-PWH."
+author: "Lindsay Hayes"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+### About the data
+
+```{r, load packages}
+library(tidyverse)
+library(Seurat)
+library(cowplot)
+library(DESeq2)
+load("~/Desktop/4.Seurat/data/7.Myeloid_tidy.rda")
+load("~/Desktop/4.Seurat/data/full_dds.rda")
+Myeloid
+dds
+# Load bulk data
+Mye_CSF <- read.csv(file = "writes/CSFvPBMCinMye.csv")
+Lym_CSF <- read.csv(file = "writes/CSFvPBMCinLym.csv")
+Mye_CSF |> filter(padj < 0.05 & log2FoldChange > 0) -> Bulk_Myeloid_CSF_enriched
+# 3492 myeloid genes enriched in CSF
+# 3054 of those in single cell dataset
+Join_Myeloid <- JoinLayers(Myeloid)
+common <- rownames(Join_Myeloid)[which(rownames(Join_Myeloid) %in% Bulk_Myeloid_CSF_enriched$gene)]
+length(unique(common))
+Idents(Join_Myeloid) <- Join_Myeloid$QC
+a <- DotPlot(Join_Myeloid, features = common)
+sc_common <- a$data
+colnames(sc_common)[3] <- "gene"
+#3054 genes
+p1 <- ggplot(sc_common, aes(x = pct.exp, y = avg.exp)) + geom_point()
+p2 <- ggplot(sc_common, aes(x = pct.exp, y = avg.exp.scaled)) + geom_point()
+p3 <- ggplot(sc_common, aes(x = pct.exp, y = avg.exp)) + geom_point() + ylim(0,5)
+p4 <- ggplot(sc_common, aes(x = pct.exp, y = avg.exp.scaled)) + geom_point() + ylim(0,1)
+plot_grid(p1, p2, p3, p4)
+#ggsave(filename = "plots/4.myeloid/bulk-SC.svg", width = 6, height = 6)
+```
+###   CSF enriched genes between bulk CSF myeloid and avg expression
+```{r}
+# Calculate bulk normalized counts for CSF_Myel samples
+Myel_CSF_bulk <- dds[,which(dds$group == "CSF_Myel")]
+Myel_CSF_bulk <- estimateSizeFactors(Myel_CSF_bulk)
+normalized_bulk_counts <- counts(Myel_CSF_bulk, normalized=TRUE)
+bulk.avg.exp <- as.data.frame(rowMeans(normalized_bulk_counts)) # dataframe of normalized counts
+bulk.avg.exp$gene <- rowData(Myel_CSF_bulk)$gene_name
+# COMBINE SC & BULK expression & Bulk CSF enrichment stats
+tmp <- merge(sc_common, bulk.avg.exp, by = "gene")
+colnames(tmp)[6] <- "bulk.avg.exp"
+tmp <- tmp[-2321, ]
+combined <- merge(tmp, Mye_CSF, by = "gene")
+ggplot(combined, aes(x = bulk.avg.exp, y =avg.exp, color = pct.exp)) + geom_point() +
+  theme_cowplot() + labs(subtitle = "3055 CSF enriched genes", x = "normalized bulk expr", y = "avg sc expr") + 
+  scale_color_gradient(
+    name = "% expr",
+    limits = c(0, 100),
+    low = "grey90",
+    high = "black")
+#ggsave(filename = "plots/4.myeloid/bulk-SC_expr_v1.svg", width = 4, height = 4)
+
+ggplot(combined, aes(x = log2(bulk.avg.exp), y =log2(avg.exp+1), color = pct.exp)) + geom_point() +
+  theme_cowplot() + labs(subtitle = "3055 CSF enriched genes", x = "log2 normalized bulk expr", y = "log2 avg sc expr") + 
+  scale_color_gradient(
+    name = "% expr",
+    limits = c(0, 100),
+    low = "grey90",
+    high = "black")
+#ggsave(filename = "plots/4.myeloid/bulk-SC_expr_v2.svg", width = 4, height = 4)
+
+### binned data
+combined <- combined %>%
+  mutate(log_bulk = log2(bulk.avg.exp),
+         bulk_bin = cut( log_bulk,
+      breaks = seq(0, 20, by = 2),
+      include.lowest = TRUE,
+      right = FALSE))
+
+ggplot(combined, aes(x = bulk_bin, y = log2(avg.exp+1))) + geom_boxplot(outlier.shape = NA) + theme_cowplot()
+table(combined$bulk_bin)
+#ggsave(filename = "plots/4.myeloid/bulk-SC_boxplots.svg", width = 4, height = 4)
+```
+### Myeloid Heatmap
+```{r}
+combined |> filter(log2FoldChange > 5 & log_bulk > 10 & pct.exp > 10) |>
+  select(gene) -> GOI
+GOI <- as.character(GOI$gene)
+order <- c(1,3,7,8,9,28,19,21,22,34,36,37,41,43, 
+          10,27,18,11,13,15,16,20,23,24,30,31,32,38,39,40,25,12, 
+           17,4,2,5,6,26,29,33,34,42,44, 14)
+
+GOI_reordered <- GOI[order]
+
+Join_Myeloid <- ScaleData(Join_Myeloid, features = GOI_reordered)
+DoHeatmap(Join_Myeloid, feature = GOI_reordered, group.by = "seurat_clusters", group.colors = c("navy", "cornflowerblue","lightsteelblue1","blue")) + scale_fill_gradientn(colors = c("white", "white", "black"))
+#ggsave(filename = "plots/4.myeloid/SC_expr_topBulk_heatmap.svg", width = 5, height = 8)
+```
+### Myeloid Violin Plots
+```{r}
+VlnPlot(Myeloid, features = c("A2M", "SLC2A5", "LYVE1", "MSMO1"), cols = c("navy", "cornflowerblue","lightsteelblue1","blue"), ncol = 2)
+#ggsave(filename = "plots/4.myeloid/example_Vln.svg", width = 4, height = 5)
+```
+```{r}
+sessionInfo()
+```
+
