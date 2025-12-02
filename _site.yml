@@ -24,5 +24,7 @@ navbar:
           href: pages/F4.html
         - text: "Figure 5"
           href: pages/F5.html
+        - text: "Figure 6"
+          href: pages/F6.html
 
 output: distill::distill_article

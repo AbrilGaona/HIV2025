@@ -1,0 +1,109 @@
+---
+title: "F5 Sub-clustering of CSF myeloid cell subsets in VS-PWH."
+author: "Lindsay Hayes"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+
+### About the Data
+
+```{r, load packages}
+library(Seurat)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+set.seed(123)
+#load data
+load("data/6.annotated.rda")
+FinalFilter
+```
+
+### Subset Myeloid cells, recluster, and normalize
+
+```{r}
+Myeloid <- subset(FinalFilter, cell_types=="Myeloid")
+DefaultAssay(Myeloid) <- "RNA"
+Myeloid <- FindVariableFeatures(Myeloid)
+Myeloid <- RunPCA(Myeloid)
+Myeloid <- RunUMAP(Myeloid, reduction = "pca", dims=1:50)
+Myeloid <- FindNeighbors(Myeloid, reduction = "pca", dims = 1:50)
+Myeloid <- FindClusters(Myeloid, resolution = 0.5)
+table(Idents(Myeloid))
+Myeloid$seurat_clusters[Myeloid$seurat_clusters == "0"] <- "1"
+Myeloid$seurat_clusters <- droplevels(Myeloid$seurat_clusters)
+Idents(Myeloid) <- Myeloid$seurat_clusters
+
+```
+### Cluster Abundance across samples
+```{r}
+table(Myeloid$seurat_clusters, Myeloid$ID)
+tmp <-table(Myeloid$seurat_clusters, Myeloid$ID)
+round(prop.table(tmp, margin = 2)*100,1)
+abundance <- as.data.frame(round(prop.table(tmp, margin = 2)*100,1))
+colnames(abundance) <- c("cluster", "ID", "Freq")
+#tidy
+Myeloid <- JoinLayers(Myeloid)
+Idents(Myeloid) <- Myeloid$seurat_clusters
+table(Idents(Myeloid))
+
+`%notin%` <- Negate(`%in%`)
+L <- rownames(Myeloid)[(grepl("^RPL", rownames(Myeloid)))]
+S <- rownames(Myeloid)[(grepl("^RPS", rownames(Myeloid)))]
+M <- rownames(Myeloid)[(grepl("MT-", rownames(Myeloid)))]
+remove <- c(L,S,M)
+tmp <- Myeloid[rownames(Myeloid) %notin% remove, ]
+dim(Myeloid)
+rm(L,M,S,remove)
+```
+### Identify cluster markers for myeloid subsets 
+```{r}
+cluster_markers <- FindAllMarkers(Myeloid,
+                                  logfc.threshold = 0.5,
+                                  test.use = "roc",
+                                  min.pct = 0.25,
+                                  only.pos = TRUE)
+table(cluster_markers$cluster, dnn = "roc")
+#write.csv(cluster_markers, file = "writes/Myeloid_cluster_markers_roc.csv")
+```
+### Dot plot
+```{r}
+c1 <- c("FTL","TPT1","TMSB4X","FTH1","NACA","EEF1A1","EEF1B2","EEF1G","AIF1","ATP5F1E", "FAU", "RACK1", "UBA52")
+
+c2 <- c("C1QA", "C1QB", "C1QC", "APOE",  "CD14", "SPP1", "C3", "TREM2",  "A2M", "GPR34", "STAB1", "LYVE1", "CSF1R", "MSR1", "CTSL", "P2RY12", "HEXB")
+
+c3 <- c("CD1E", "FCER1A", "CD1C", "FLT3", "CD2", "ICAM3", "CD1D", "IL2RG", "CLCN5", "CLEC10A", "ID2", "TLR10", "PARM1", "IL1R2", "P2RY10", "IL18R1", "SLC38A1", "MCOLN2", "ST18", "TMEM273", "ADAM8")
+
+c4 <- c("CD36","VCAN", "FCN1", "CDA", "S100A8", "LYZ", "CCR2", "S100A9", "CD300LF", "PLCB1", "BST1", "NLRP12", "ASGR1", "MGST1", "EIF4E3", "RAB3D")
+
+# label expression as z-score expression
+DotPlot(Myeloid, features = c(c1, c2, c3, c4)) + coord_flip() +
+  scale_color_gradient2(
+  low = "white",    
+  mid = "grey80",     
+  high = "navy",    
+  midpoint = 0)
+
+#ggsave("plots/4.myeloid/Myel_dotplot.svg", width = 6, height = 12)
+```
+### DAM marker enrichemnt in CSF myeloid cells
+```{r}
+DAM <- c( "CLEC7A", "CYBB", "GRN", "CD74", "B2M", "ITGAX", "LILRB4", "MSR1", "FTH1","TFEC", "CTSL", "LGALS3", "VEGFA", "LPL", "SPP1", "CST7", "GPNMB", "TREM2", "APOE", "AXL", "C3")
+
+Myeloid <- ScaleData(Myeloid, features = DAM)
+DoHeatmap(Myeloid, features = DAM, draw.lines = TRUE, group.colors = c("navy", "cornflowerblue","lightsteelblue1","blue")) + scale_fill_gradientn(colors = c("white", "white", "cornflowerblue"))
+ggsave(filename = "plots/4.myeloid/DAM_heatmap.svg", width = 5, height = 6)
+
+DotPlot(Myeloid, features = rev(DAM), group.by = "QC", scale = FALSE) + coord_flip()
+#ggsave(filename = "plots/4.myeloid/DAM_dotplot.svg", width = 5, height = 6)
+```
+```{r}
+sessionInfo()
+```
+

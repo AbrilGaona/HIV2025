@@ -1,0 +1,63 @@
+---
+title: "F5 Sub-clustering of CSF myeloid cell subsets in VS-PWH."
+author: "Lindsay Hayes"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+
+### About the Data
+
+```{r, load packages}
+library(Seurat)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+set.seed(123)
+#load data
+load("data/6.annotated.rda")
+FinalFilter
+```
+
+### Subset Myeloid cells, recluster, and normalize
+
+```{r}
+Myeloid <- subset(FinalFilter, cell_types=="Myeloid")
+DefaultAssay(Myeloid) <- "RNA"
+Myeloid <- FindVariableFeatures(Myeloid)
+Myeloid <- RunPCA(Myeloid)
+Myeloid <- RunUMAP(Myeloid, reduction = "pca", dims=1:50)
+Myeloid <- FindNeighbors(Myeloid, reduction = "pca", dims = 1:50)
+Myeloid <- FindClusters(Myeloid, resolution = 0.5)
+table(Idents(Myeloid))
+Myeloid$seurat_clusters[Myeloid$seurat_clusters == "0"] <- "1"
+Myeloid$seurat_clusters <- droplevels(Myeloid$seurat_clusters)
+Idents(Myeloid) <- Myeloid$seurat_clusters
+#Dimplot
+DimPlot(Myeloid, reduction = "umap", cols = c("navy", "cornflowerblue","lightsteelblue1","blue"))
+#ggsave("plots/4.myeloid/umap_blue.svg", width = 6, height = 5)
+#save(Myeloid, file = "data/7.Myeloid.rda")
+```
+### Cluster Abundance across samples
+```{r}
+table(Myeloid$seurat_clusters, Myeloid$ID)
+
+tmp <-table(Myeloid$seurat_clusters, Myeloid$ID)
+round(prop.table(tmp, margin = 2)*100,1)
+abundance <- as.data.frame(round(prop.table(tmp, margin = 2)*100,1))
+colnames(abundance) <- c("cluster", "ID", "Freq")
+
+ggplot(abundance, aes(fill=cluster, y=Freq, x=ID)) + 
+  geom_bar(position="stack", stat="identity") + theme_cowplot() +
+  scale_fill_manual(values = c("navy", "cornflowerblue","lightsteelblue1","blue"))
+#ggsave("plots/4.myeloid/Myel_abundance_blue.svg", width = 6, height = 5)
+```
+```{r}
+sessionInfo()
+```

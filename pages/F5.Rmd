@@ -1,0 +1,59 @@
+---
+title: "&nbsp;"
+description: ""
+output:
+  distill::distill_article:
+    css: ../fig-styles.css
+    toc: false
+---
+<div id="fig-home-bar">
+  <a href="../index.html">Home</a>
+</div>
+  <header id="fig-header">
+    <h1> Sub-clustering of CSF myeloid cell subsets in VS-PWH </h1>
+    <p class="fig-subtitle">
+    </p>
+  </header>
+
+  <main id="fig-main">
+    <section id="fig-image-panel">
+      ![](../figs/F5.jpg){#fig5}
+      </section>
+      <section id="fig-caption-panel">
+      <h3> Figure 5 </h3>
+      <ul>
+      
+        <li>A ) UMAP of myeloid cell sub-clustering identified 4 clusters. </li>
+        
+        <li>B ) Proportions of each subcluster in each individual VS-PWH CSF sample.
+        <a href="../figs/F5_AB_cntrd.html" target="_blank" rel="noopener" style="margin-right:12px;"> Check A and B closer! </a>
+        <br> <a href="../code/F5_AB.html" target="_blank" rel="noopener"> View code for A and B. </a></li>
+        
+        
+        <li>C ) Congruence analysis using SingleR of the predicted cell-type within each cluster using Cantoni et.al. single cell reference. Graph shows the percentage of each predicted cell type within each cluster.
+        <a href="../code/F1_C.html" target="_blank" rel="noopener"> View code </a> </li>
+        
+        <li>D ) Dot plot of enriched gene expression in myeloid clusters. 
+        <a href="../figs/F5_D_cntrd.html" target="_blank" rel="noopener" style="margin-right:12px;"> Check it closer! </a> </li>
+       
+       <li>E ) Heatmap of gene expression of disease associated macrophage (DAM) markers in the CSF-derived myeloid cells from VS-PWH.
+       <a href="../figs/F5_E_cntrd.html" target="_blank" rel="noopener" style="margin-right:12px;"> Check it closer! </a>
+        <br> <a href="../code/F5_DE.html" target="_blank" rel="noopener"> View code for D and E. </a> </li> 
+       
+       <li>F ) Comparison of expression of the CSF enriched genes between bulk sequencing of the CSF-derived myeloid cells (log2 normalized expression) and average expression across the myeloid cells including the percentage of single cells that express each gene. </li>
+       
+       <li>G ) Boxplots for the genes in E binned by the bulk expression the values are number of genes expressed in each bin by single myeloid cells. For example, 760 genes had a bulk expression between 8-10 (log2 normalized expression) in bulk lymphoid cells and an average single cell expression less than 0.5 (average log2 single cell expression).
+       <a href="../figs/F5_FG_cntrd.html" target="_blank" rel="noopener"> Check F and G closer! </a> </li> 
+       
+       <li>H ) Heatmap of top genes that were enriched in the CSF compared to peripheral blood from Fig 3 and had high expression in the single-cell RNA sequencing data. The CSF enriched genes are highly expressed in cluster 1 and 2 macrophages.
+         <a href="../figs/F5_H_cntrd.html" target="_blank" rel="noopener"> Check it closer! </a> </li>
+        
+        <li>I-K ) Examples of CSF enriched genes in bulk myeloid cells across the individual myeloid subtypes.The expression of each gene in the bulk RNA sequencing data (left plot) compared to the cluster enrichment in the single cell RNA sequencing data (right plot).
+        <a href="../figs/F5_IJK_cntrd.html" target="_blank" rel="noopener"> Check it closer! </a> 
+        <br><a href="../code/F5_FK.html" target="_blank" rel="noopener"> View code for F to K </a> </li>
+
+  </ul>
+    
+
+
+</div>
