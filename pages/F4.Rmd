@@ -32,7 +32,7 @@ output:
         <a href="../code/F4_C.html" target="_blank" rel="noopener"> View code </a> </li>
         
        <li>D ) Top gene expression markers for each cell type.
-       <a href="../figs/F4_D.jpg" target="_blank" rel="noopener"> Check it closer! </a> </li>
+       <a href="../figs/F4_D_cntrd.html" target="_blank" rel="noopener"> Check it closer! </a> </li>
        
        
   </ul>

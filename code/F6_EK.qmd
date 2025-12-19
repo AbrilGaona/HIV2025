@@ -1,0 +1,130 @@
+---
+title: "F6 Sub-clustering of CSF T-cell subsets in VS-PWH."
+author: "Lindsay Hayes"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+### About the data
+```{r}
+library(tidyverse)
+library(Seurat)
+library(cowplot)
+library(DESeq2)
+load("~/Desktop/4.Seurat/data/8.Tcell.rda")
+load("~/Desktop/4.Seurat/data/full_dds.rda")
+Tcell
+dds
+# Load bulk data
+Lym_CSF <- read.csv(file = "writes/CSFvPBMCinLym.csv")
+Lym_CSF |> filter(padj < 0.05 & log2FoldChange > 0) -> Bulk_Lymphoid_CSF_enriched
+# 1072 myeloid genes enriched in CSF
+# 1010 of those in single cell dataset
+Join_Tcell <- JoinLayers(Tcell)
+common <- rownames(Join_Tcell)[which(rownames(Join_Tcell) %in% Bulk_Lymphoid_CSF_enriched$gene)]
+length(unique(common))
+
+Idents(Join_Tcell) <- Join_Tcell$QC
+a <- DotPlot(Join_Tcell, features = common)
+sc_common <- a$data
+colnames(sc_common)[3] <- "gene"
+#1010 genes
+p1 <- ggplot(sc_common, aes(x = pct.exp, y = avg.exp)) + geom_point()
+p2 <- ggplot(sc_common, aes(x = pct.exp, y = avg.exp.scaled)) + geom_point()
+p3 <- ggplot(sc_common, aes(x = pct.exp, y = avg.exp)) + geom_point() + ylim(0,5)
+p4 <- ggplot(sc_common, aes(x = pct.exp, y = avg.exp.scaled)) + geom_point() + ylim(0,1)
+plot_grid(p1, p2, p3, p4)
+#ggsave(filename = "plots/5.Tcell/bulk-SC.svg", width = 6, height = 6)
+
+# test that sc_common is the same as pseudobulk
+PBE <- PseudobulkExpression(Join_Tcell, features = common, group.by = "QC")
+all.equal(as.character(sc_common$gene), rownames(PBE$RNA))
+plot(PBE$RNA, sc_common$avg.exp)
+```
+#  CSF enriched genes between bulk CSF lymphoid and avg expression
+
+```{r}
+# Calculate bulk normalized counts for CSF_Lym samples
+T_CSF_bulk <- dds[,which(dds$group == "CSF_Lym")]
+T_CSF_bulk <- estimateSizeFactors(T_CSF_bulk)
+normalized_bulk_counts <- counts(T_CSF_bulk, normalized=TRUE)
+bulk.avg.exp <- as.data.frame(rowMeans(normalized_bulk_counts)) # dataframe of normalized counts
+bulk.avg.exp$gene <- rowData(T_CSF_bulk)$gene_name
+# COMBINE SC & BULK & Bulk CSF enrichment stats
+tmp <- merge(sc_common, bulk.avg.exp, by = "gene")
+colnames(tmp)[6] <- "bulk.avg.exp"
+tmp <- tmp[-765, ] # remove duplicate gene name
+combined <- merge(tmp, Lym_CSF, by = "gene") # 1010
+#Plots
+ggplot(combined, aes(x = bulk.avg.exp, y =avg.exp, color = pct.exp)) + geom_point() +
+  theme_cowplot() + labs(subtitle = "1011 CSF enriched genes", x = "normalized bulk expr", y = "avg sc expr") + 
+  scale_color_gradient(
+    name = "% expr",
+    limits = c(0, 100),
+    low = "grey90",
+    high = "black")
+#ggsave(filename = "plots/5.Tcell//bulk-SC_expr_v1.svg", width = 4, height = 4)
+
+ggplot(combined, aes(x = log2(bulk.avg.exp), y =log2(avg.exp+1), color = pct.exp)) + geom_point() +
+  theme_cowplot() + labs(subtitle = "1011 CSF enriched genes", x = "log2 normalized bulk expr", y = "log2 avg sc expr") + 
+  scale_color_gradient(
+    name = "% expr",
+    limits = c(0, 100),
+    low = "grey90",
+    high = "black")
+#ggsave(filename = "plots/5.Tcell/bulk-SC_expr_v2.svg", width = 4, height = 4)
+
+## binned data
+combined <- combined |>
+  mutate(log_bulk = log2(bulk.avg.exp),
+         bulk_bin = cut( log_bulk,
+      breaks = seq(0, 20, by = 2),
+      include.lowest = TRUE,
+      right = FALSE))
+ggplot(combined, aes(x = bulk_bin, y = log2(avg.exp+1))) + geom_boxplot(outlier.shape = NA) + theme_cowplot()
+#ggsave(filename = "plots/5.Tcell/bulk-SC_boxplots.svg", width = 4, height = 4)
+table(combined$bulk_bin)
+```
+
+# T-cell heatmap
+genes with high fold changes (enrichment in CSF) have no expression in single cell. pick the highest fold changes that have reasonable expression in sc.
+
+```{r}
+ggplot(combined, aes(y = log2FoldChange, x = pct.exp, color =log_bulk )) + geom_point() + theme_cowplot() + 
+  scale_fill_gradientn(colors = c("white", "white", "black")) + geom_hline(yintercept =1) + geom_vline(xintercept = 10)
+
+Idents(Tcell) <- Tcell$cell_types
+#  genes with greater CSF enrighment are poorly expressed in the single cell data
+combined |> filter(log2FoldChange > 3) |>
+  select(gene) -> GOI
+GOI <- as.character(GOI$gene)
+Tcell <- ScaleData(Tcell, features = GOI)
+DoHeatmap(Tcell, feature = GOI, raster = T) + scale_fill_gradientn(colors = c("white", "white", "black"))
+ggsave(filename = "plots/5.Tcell/heatmap_bulk-SC_sparse.svg", width = 6, height = 6)
+
+#  genes with higher single cell expression are enriched in CSF but not as high a fold change
+combined |> filter(log2FoldChange > 1 & pct.exp > 20) |>
+  select(gene) -> GOI
+GOI <- as.character(GOI$gene)
+Tcell <- ScaleData(Tcell, features = GOI)
+#Plot
+DoHeatmap(Tcell, feature = GOI, raster = T) + scale_fill_gradientn(colors = c("white", "white", "black"))
+#ggsave(filename = "plots/5.Tcell/heatmap_bulk-SC_full.svg", width = 6, height = 6)
+```
+### T-cell Violin Plots
+```{r}
+Idents(Tcell) <- Tcell$cell_types
+VlnPlot(Tcell, features = c("MSMO1", "CCR5", "DPP4", "GIMAP5"), pt.size = 0, cols = c("darkgreen", "springgreen","gold","goldenrod","red","purple","grey"),ncol=2)
+#ggsave(filename = "plots/5.Tcell/example_Vln_Tcell.svg", width = 5, height = 5)
+```
+
+```{r}
+sessionInfo()
+```
+

@@ -26,5 +26,8 @@ navbar:
           href: pages/F5.html
         - text: "Figure 6"
           href: pages/F6.html
+    - text: "Supplemental information"
+      menu:
+       
 
 output: distill::distill_article

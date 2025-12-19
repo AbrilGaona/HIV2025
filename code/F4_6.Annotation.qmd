@@ -37,7 +37,7 @@ levels(FinalFilter@meta.data$cell_types) <- cell_types
 table(FinalFilter$cell_types)
 ```
 
-#Visualize
+## Visualize
 ```{r, umap}
 DimPlot(FinalFilter, reduction = "umap.mnn", group.by = "cell_types", cols = c("seagreen3", "lightgoldenrod", "steelblue2","hotpink", "purple", "grey"))
 ggsave("plots/3.clusters/umap.svg", width = 6, height = 5)
@@ -84,7 +84,7 @@ table(cluster_markers$cluster, dnn = "roc")
 write.csv(cluster_markers, file = "writes/cluster_markers_roc_251124.csv")
 ```
 
-# Heatmap
+### Heatmap
 ```{r, heatmap}
 #| fig-height: 12
 #| fig-width: 8

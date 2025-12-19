@@ -1,0 +1,102 @@
+---
+title: "F5 Sub-clustering of CSF myeloid cell subsets in VS-PWH."
+author: "Abril Gaona"
+date: "`r Sys.Date()`"
+format: html
+output-dir: "../code"
+execute:
+  eval: false
+  echo: true
+  warning: false
+  error: false
+  message: false
+---
+### About the data
+The CSF-derived myeloid fraction was annotated using the Bioconductor package "Single R" that can use a previously annotated data set (single-cell or bulk) as a reference, for further details please consult the [SingleR Vignette]
+Cantoni et.al., 2025 raw counts were obtained from Synapse (accession no.syn51730532)
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(SingleCellExperiment)
+library(Seurat)
+library(dplyr)
+library(SingleR)
+library(scuttle)
+library(scRNAseq)
+library(ggplot2)
+library(scales)
+library(cowplot)
+set.seed(42)
+```
+### Load data and prep
+```{r}
+#Myeloid
+load("data/7.Myeloid.rda")
+#Join Layers
+Myeloid_jnd <- JoinLayers(Myeloid)
+#Get normalized counts
+Myeloid_jnd <- as.SingleCellExperiment(Myeloid_jnd) 
+Myeloid_jnd_counts <- logNormCounts(
+    Myeloid_jnd,
+    assay.type = "counts",   
+    name = "logcounts") 
+#Load Cantoni to be the reference 
+ref.myeloid <- readH5AD("data/myeloid_raw_counts.h5ad")
+ref.myeloid.counts <- logNormCounts(
+    ref.myeloid,
+    assay.type = "X",   
+    name = "logcounts" )
+```
+### SingleR
+```{r}
+sR.myeloid.v4 <- SingleR(test=Myeloid_jnd_counts, ref=ref.myeloid.counts, labels=ref.myeloid.counts$cell_type, de.method="wilcox")
+#saveRDS(sR.myeloid.v4, file = "data/sR.myeloid.v4.rds")
+myeloid.cells <- as.data.frame(table(sR.myeloid.v4$labels))
+#QC plots
+plotScoreHeatmap(sR.myeloid.v4)
+plotScoreDistribution(sR.myeloid.v4)
+```
+### Plot
+```{r}
+myeloidR <- as.data.frame(sR.myeloid.v4)
+predicted_labels <- myeloidR[, c(14,15,16)]
+ #Merge with Hayes Myeloid
+rownames(predicted_labels) <- as.character(rownames(predicted_labels))
+rownames(Myeloid@meta.data) <- as.character(rownames(Myeloid@meta.data))
+Myeloid@meta.data$atlas_labels <- predicted_labels[rownames(Myeloid@meta.data), "labels"]
+Myeloid@meta.data$atlas_labels.pruned <- predicted_labels[rownames(Myeloid@meta.data), "pruned.labels"]
+Myeloid@meta.data$delta.next <- predicted_labels[rownames(Myeloid@meta.data), "delta.next"]
+#get cell numbers
+meta <- Myeloid@meta.data
+
+num_tot_cells_myeloid <- meta %>%
+  dplyr::select(cell_types,seurat_clusters, atlas_labels, ID) %>%
+  dplyr::count(cell_types,seurat_clusters, atlas_labels, name = "total_cells") %>%
+  dplyr::ungroup()
+
+myeloid_proportions <- num_tot_cells_myeloid %>%
+    group_by(seurat_clusters) %>%
+    mutate(prop = total_cells / sum(total_cells)) %>%
+    ungroup()
+
+ggplot(myeloid_proportions,
+       aes(x = seurat_clusters, y = prop, fill = atlas_labels)) +
+    geom_col(width = 0.9) +
+    scale_y_continuous(labels = percent) +
+    labs(x = "Clusters", y = "% cell label transfer",
+         fill = "Cantoni et.al. labels",
+         title = " ") +
+    theme_cowplot() +
+      theme(
+    axis.text.x  = element_text(angle = 90, vjust = 0.5),
+    axis.title.x = element_text(margin = margin(t = 20)),  
+    axis.title.y = element_text(size = 12),
+    legend.text   = element_text(size = 10),   
+    legend.title  = element_text(size = 9)
+  )
+#ggsave("plots/SingleR_myeloid_cluster_composition_cantoni.svg", width = 14, height = 10, dpi = 300)
+```
+```{r}
+sessionInfo()
+```

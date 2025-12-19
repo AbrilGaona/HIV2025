@@ -43,11 +43,11 @@ output:
 </a></li>
 
 <li>C ) Volcano plot of differentially expressed genes in myeloid cells between CSF and peripheral blood.
-<a href="../figs/F2_C.jpg" target="_blank" rel="noopener"> Check it closer!
+<a href="../figs/F2_C_cntrd.html" target="_blank" rel="noopener"> Check it closer!
 </a></li>
 
 <li>D ) Volcano plot of differentially expressed genes in lymphoid cells between CSF and peripheral blood.
-<a href="../figs/F2_D.jpg" target="_blank" rel="noopener" style="margin-right:12px;"> Check it closer!
+<a href="../figs/F2_D_cntrd.html" target="_blank" rel="noopener" style="margin-right:12px;"> Check it closer!
 </a><br> <a href="../code/F2_CD.html" target="_blank" rel="noopener"> View code.
 </a></li>
 

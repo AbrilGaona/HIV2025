@@ -31,7 +31,8 @@ output:
         
         
         <li>C ) Congruence analysis using SingleR of the predicted cell-type within each cluster using Cantoni et.al. single cell reference. Graph shows the percentage of each predicted cell type within each cluster.
-        <a href="../code/F1_C.html" target="_blank" rel="noopener"> View code </a> </li>
+        <a href="../figs/F5_C_cntrd.html" target="_blank" rel="noopener" style="margin-right:12px;"> Check it closer! </a>
+        <br> <a href="../code/F5_C.html" target="_blank" rel="noopener"> View code. </a></li>
         
         <li>D ) Dot plot of enriched gene expression in myeloid clusters. 
         <a href="../figs/F5_D_cntrd.html" target="_blank" rel="noopener" style="margin-right:12px;"> Check it closer! </a> </li>
